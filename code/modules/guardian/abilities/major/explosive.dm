@@ -26,7 +26,7 @@
 		if(!M.anchored && M != guardian.summoner?.current && !guardian.hasmatchingsummoner(M))
 			new /obj/effect/temp_visual/guardian/phase/out(get_turf(M))
 			do_teleport(M, M, 10, channel = TELEPORT_CHANNEL_BLUESPACE)
-			for(var/mob/living/L in range(1, M))
+			for(var/mob/living/L in hearers(1, M))
 				if(guardian.hasmatchingsummoner(L)) //if the summoner matches don't hurt them
 					continue
 				if(L != guardian && L != guardian.summoner?.current)
@@ -51,6 +51,8 @@
 			to_chat(guardian, "<span class='danger'><B>Your powers are on cooldown! You must wait 20 seconds between bombs.</B></span>")
 
 /datum/guardian_ability/major/explosive/proc/kaboom(atom/source, mob/living/explodee)
+	SIGNAL_HANDLER
+
 	if(!istype(explodee))
 		return
 	if(explodee == guardian || explodee == guardian.summoner?.current || guardian.hasmatchingsummoner(explodee))
@@ -70,6 +72,8 @@
 	UNREGISTER_BOMB_SIGNALS(A)
 
 /datum/guardian_ability/major/explosive/proc/display_examine(datum/source, mob/user, text)
+	SIGNAL_HANDLER
+
 	text += "<span class='holoparasite'>It glows with a strange <font color=\"[guardian.guardiancolor]\">light</font>!</span>"
 
 

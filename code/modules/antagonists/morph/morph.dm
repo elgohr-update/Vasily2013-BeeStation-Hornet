@@ -53,6 +53,7 @@
 							Finally, you can restore yourself to your original form while morphed by shift-clicking yourself.</b>"
 
 	mobchatspan = "blob"
+	discovery_points = 2000
 
 /mob/living/simple_animal/hostile/morph/Initialize(mapload)
 	var/datum/action/innate/morph/stomach/S = new
@@ -197,7 +198,7 @@
 		if(A == src)
 			restore()
 			return
-		if(istype(A) && allowed(A))
+		if(allowed(A))
 			assume(A)
 	else
 		to_chat(src, "<span class='warning'>Your chameleon skin is still repairing itself!</span>")
@@ -213,7 +214,8 @@
 	visible_message("<span class='warning'>[src] suddenly twists and changes shape, becoming a copy of [target]!</span>", \
 					"<span class='notice'>You twist your body and assume the form of [target].</span>")
 	appearance = target.appearance
-	copy_overlays(target)
+	if(length(target.vis_contents))
+		add_overlay(target.vis_contents)
 	alpha = max(alpha, 150)	//fucking chameleons
 	transform = initial(transform)
 	pixel_y = initial(pixel_y)
@@ -291,7 +293,7 @@
 	. = ..()
 	if(.)
 		var/list/things = list()
-		for(var/atom/movable/A in view(src))
+		for(var/atom/A as() in view(src))
 			if(allowed(A))
 				things += A
 		var/atom/movable/T = pick(things)
@@ -319,6 +321,17 @@
 			eat(I)
 			return
 	return ..()
+//Ambush attack
+/mob/living/simple_animal/hostile/morph/attack_hand(mob/living/carbon/human/M)
+	if(morphed)
+		M.Knockdown(40)
+		M.reagents.add_reagent(/datum/reagent/toxin/morphvenom, 7)
+		M.visible_message("<span class='userdanger'>[src] bites you!</span>")
+		visible_message("<span class='danger'>[src] violently bites [M]!</span>",\
+				"<span class='userdanger'>You ambush [M]!</span>", null, COMBAT_MESSAGE_RANGE)
+		restore()
+	else
+		..()
 
 //Spawn Event
 

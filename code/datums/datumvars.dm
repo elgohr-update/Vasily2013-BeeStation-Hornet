@@ -29,6 +29,7 @@
 	VV_DROPDOWN_OPTION(VV_HK_MARK, "Mark Object")
 	VV_DROPDOWN_OPTION(VV_HK_DELETE, "Delete")
 	VV_DROPDOWN_OPTION(VV_HK_EXPOSE, "Show VV To Player")
+	VV_DROPDOWN_OPTION(VV_HK_ADDCOMPONENT, "Add Component/Element")
 	VV_DROPDOWN_OPTION(VV_HK_MODIFY_TRAITS, "Modify Traits")
 	#ifdef REFERENCE_TRACKING
 	VV_DROPDOWN_OPTION(VV_HK_VIEW_REFERENCES, "View References")
@@ -40,10 +41,8 @@
 /datum/proc/vv_do_topic(list/href_list)
 	if(!usr || !usr.client || !usr.client.holder || !check_rights(NONE))
 		return FALSE			//This is VV, not to be called by anything else.
-	/* This was ported from /TG/, modify traits isn't a thing here. Keeping in case it becomes a thing.
 	if(href_list[VV_HK_MODIFY_TRAITS])
 		usr.client.holder.modify_traits(src)
-	*/
 	return TRUE
 
 /datum/proc/vv_get_header()

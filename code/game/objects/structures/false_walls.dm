@@ -189,7 +189,7 @@
 		if(world.time > last_event+15)
 			active = 1
 			radiation_pulse(src, 150)
-			for(var/turf/closed/wall/mineral/uranium/T in orange(1,src))
+			for(var/turf/closed/wall/mineral/uranium/T in (RANGE_TURFS(1,src)-src))
 				T.radiate()
 			last_event = world.time
 			active = null
@@ -291,6 +291,15 @@
 	mineral = /obj/item/stack/sheet/mineral/wood
 	walltype = /turf/closed/wall/mineral/wood
 	canSmoothWith = list(/obj/structure/falsewall/wood, /turf/closed/wall/mineral/wood)
+
+/obj/structure/falsewall/bamboo
+	name = "bamboo wall"
+	desc = "A wall with bamboo finish. Zen."
+	icon = 'icons/turf/walls/bamboo_wall.dmi'
+	icon_state = "bamboo"
+	mineral = /obj/item/stack/sheet/mineral/bamboo
+	walltype = /turf/closed/wall/mineral/bamboo
+	canSmoothWith = list(/obj/structure/falsewall/bamboo, /turf/closed/wall/mineral/bamboo)
 
 /obj/structure/falsewall/iron
 	name = "rough iron wall"

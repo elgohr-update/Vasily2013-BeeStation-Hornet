@@ -16,13 +16,16 @@
 /turf/closed/wall/mineral/cult/devastate_wall()
 	new sheet_type(get_turf(src), sheet_amount)
 
-/turf/closed/wall/mineral/cult/Exited(atom/movable/AM, atom/newloc)
+/turf/closed/wall/mineral/cult/try_destroy(obj/item/I, mob/user, turf/T)
+	return FALSE
+
+/turf/closed/wall/mineral/cult/Exited(atom/movable/gone, direction)
 	. = ..()
-	if(istype(AM, /mob/living/simple_animal/hostile/construct/harvester)) //harvesters can go through cult walls, dragging something with
-		var/mob/living/simple_animal/hostile/construct/harvester/H = AM
+	if(istype(gone, /mob/living/simple_animal/hostile/construct/harvester)) //harvesters can go through cult walls, dragging something with
+		var/mob/living/simple_animal/hostile/construct/harvester/H = gone
 		var/atom/movable/stored_pulling = H.pulling
 		if(stored_pulling)
-			stored_pulling.setDir(get_dir(stored_pulling.loc, newloc))
+			stored_pulling.setDir(direction)
 			stored_pulling.forceMove(src)
 			H.start_pulling(stored_pulling, supress_message = TRUE)
 
@@ -83,3 +86,25 @@
 	sheet_amount = 2
 	girder_type = /obj/structure/girder/bronze
 
+
+/turf/closed/indestructible/cordon
+	name = "cordon"
+	desc = "The final word in problem solving."
+	icon_state = "cordon"
+
+//Will this look good? No. Will it work? Probably.
+
+/turf/closed/indestructible/cordon/Entered(atom/movable/AM)
+	. = ..()
+	if(isobserver(AM))
+		return
+	if(ismob(AM))
+		var/mob/interloper = AM
+		interloper.death()
+	if(ismecha(AM))
+		var/obj/mecha/fuckphazons = AM
+		var/mob/living/carbon/interloper = fuckphazons.occupant
+		interloper?.death()
+		qdel(interloper)
+
+	qdel(AM)

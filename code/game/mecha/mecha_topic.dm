@@ -89,7 +89,7 @@
 ///HTML for internal damage.
 /obj/mecha/proc/report_internal_damage()
 	. = ""
-	var/static/list/dam_reports = list(
+	var/list/dam_reports = list(
 		"[MECHA_INT_FIRE]" = "<span class='userdanger'>INTERNAL FIRE.</span>",
 		"[MECHA_INT_TEMP_CONTROL]" = "<span class='userdanger'>LIFE SUPPORT SYSTEM MALFUNCTION.</span>",
 		"[MECHA_INT_TANK_BREACH]" = "<span class='userdanger'>GAS TANK BREACH.</span>",
@@ -391,6 +391,9 @@
 
 	//Turns on the DNA lock
 	if(href_list["dna_lock"])
+		if(obj_flags & EMAGGED)
+			occupant_message("The control console lights up red, failing to bind to your DNA.")
+			return
 		if(!iscarbon(occupant) || !occupant.dna)
 			occupant_message("The controls console flashes brightly, binding to your DNA.")
 			return

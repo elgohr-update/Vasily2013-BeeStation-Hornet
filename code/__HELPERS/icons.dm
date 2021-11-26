@@ -706,6 +706,11 @@ world
 		((hi3 >= 65 ? hi3-55 : hi3-48)<<4) | (lo3 >= 65 ? lo3-55 : lo3-48),
 		((hi4 >= 65 ? hi4-55 : hi4-48)<<4) | (lo4 >= 65 ? lo4-55 : lo4-48))
 
+//Returns color multiplied by amount, in hex format
+/proc/MultiplyHexColor(color, amount)
+	var/list/rgb = ReadRGB(color)
+	return rgb(round(rgb[1]*amount), round(rgb[2]*amount), round(rgb[3]*amount))
+
 // Creates a single icon from a given /atom or /image.  Only the first argument is required.
 /proc/getFlatIcon(image/A, defdir, deficon, defstate, defblend, start = TRUE, no_anim = FALSE)
 	//Define... defines.
@@ -1042,7 +1047,7 @@ world
 			letter = lowertext(letter)
 
 	var/image/text_image = new(loc = A)
-	text_image.maptext = "<font size = 4>[letter]</font>"
+	text_image.maptext = MAPTEXT("<font size = 4>[letter]</font>")
 	text_image.pixel_x = 7
 	text_image.pixel_y = 5
 	qdel(atom_icon)
@@ -1195,7 +1200,7 @@ GLOBAL_DATUM_INIT(dummySave, /savefile, new("tmp/dummySave.sav")) //Cache of ico
 			return
 	if (!isicon(I))
 		if (isfile(thing)) //special snowflake
-			var/name = sanitize_filename("[generate_asset_name(thing)].png")
+			var/name = SANITIZE_FILENAME("[generate_asset_name(thing)].png")
 			SSassets.transport.register_asset(name, thing)
 			for (var/thing2 in targets)
 				SSassets.transport.send_assets(thing2, name)

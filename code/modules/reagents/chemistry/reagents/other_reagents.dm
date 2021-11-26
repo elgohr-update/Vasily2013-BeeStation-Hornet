@@ -1,5 +1,5 @@
 /datum/reagent/blood
-	data = list("donor"=null,"viruses"=null,"blood_DNA"=null,"blood_type"=null,"resistances"=null,"trace_chem"=null,"mind"=null,"ckey"=null,"gender"=null,"real_name"=null,"cloneable"=null,"factions"=null,"quirks"=null)
+	data = list("viruses"=null,"blood_DNA"=null,"blood_type"=null,"resistances"=null,"trace_chem"=null,"mind"=null,"ckey"=null,"gender"=null,"real_name"=null,"cloneable"=null,"factions"=null,"quirks"=null)
 	name = "Blood"
 	color = "#C80000" // rgb: 200, 0, 0
 	metabolization_rate = 5 //fast rate so it disappears fast.
@@ -117,14 +117,22 @@
 	description = "A happy looking liquid that you feel compelled to consume if you want a better life."
 	color = "#ecca7f"
 	taste_description = "dog treats"
+	can_synth = FALSE
 	var/mob/living/simple_animal/pet/dog/corgi/new_corgi
 
 /datum/reagent/corgium/on_mob_metabolize(mob/living/L)
 	. = ..()
 	new_corgi = new(get_turf(L))
 	new_corgi.key = L.key
-	new_corgi.name = L.name
+	new_corgi.name = L.real_name
+	new_corgi.real_name = L.real_name
 	ADD_TRAIT(L, TRAIT_NOBREATH, CORGIUM_TRAIT)
+	//hack - equipt current hat
+	var/mob/living/carbon/C = L
+	if (istype(C))
+		var/obj/item/hat = C.get_item_by_slot(ITEM_SLOT_HEAD)
+		if (hat)
+			new_corgi.place_on_head(hat,null,FALSE)
 	L.forceMove(new_corgi)
 
 /datum/reagent/corgium/on_mob_life(mob/living/carbon/M)
@@ -146,6 +154,14 @@
 	L.adjustBruteLoss(new_corgi.getBruteLoss())
 	L.adjustFireLoss(new_corgi.getFireLoss())
 	L.forceMove(get_turf(new_corgi))
+	// HACK - drop all corgi inventory
+	var/turf/T = get_turf(new_corgi)
+	if (new_corgi.inventory_head)
+		if(!L.equip_to_slot_if_possible(new_corgi.inventory_head, ITEM_SLOT_HEAD,disable_warning = TRUE, bypass_equip_delay_self=TRUE))
+			new_corgi.inventory_head.forceMove(T)
+	new_corgi.inventory_back?.forceMove(T)
+	new_corgi.inventory_head = null
+	new_corgi.inventory_back = null
 	qdel(new_corgi)
 
 /datum/reagent/water
@@ -215,6 +231,10 @@
 
 /datum/reagent/water/reaction_mob(mob/living/M, method=TOUCH, reac_volume)//Splashing people with water can help put them out!
 	if(!istype(M))
+		return
+	if(isoozeling(M))
+		M.blood_volume = max(M.blood_volume - 30, 0)
+		to_chat(M, "<span class='warning'>The water causes you to melt away!</span>")
 		return
 	if(method == TOUCH)
 		M.adjust_fire_stacks(-(reac_volume / 10))
@@ -345,12 +365,20 @@
 	description = "Lubricant is a substance introduced between two moving surfaces to reduce the friction and wear between them. giggity."
 	color = "#009CA8" // rgb: 0, 156, 168
 	taste_description = "cherry" // by popular demand
+	var/lube_kind = TURF_WET_LUBE ///What kind of slipperiness gets added to turfs.
 
 /datum/reagent/lube/reaction_turf(turf/open/T, reac_volume)
 	if (!istype(T))
 		return
 	if(reac_volume >= 1)
-		T.MakeSlippery(TURF_WET_LUBE, 15 SECONDS, min(reac_volume * 2 SECONDS, 120))
+		T.MakeSlippery(lube_kind, 15 SECONDS, min(reac_volume * 2 SECONDS, 120))
+
+///Stronger kind of lube. Applies TURF_WET_SUPERLUBE.
+/datum/reagent/lube/superlube
+	name = "Super Duper Lube"
+	description = "This \[REDACTED\] has been outlawed after the incident on \[DATA EXPUNGED\]."
+	lube_kind = TURF_WET_SUPERLUBE
+
 
 /datum/reagent/spraytan
 	name = "Spray Tan"
@@ -498,6 +526,7 @@
 		H.set_species(species_type)
 		H.reagents.del_reagent(type)
 		to_chat(H, "<span class='warning'>You've become \a [lowertext(initial(species_type.name))]!</span>")
+		return
 	..()
 
 /datum/reagent/mutationtoxin/classic //The one from plasma on green slimes
@@ -516,10 +545,11 @@
 						/datum/species/lizard,
 						/datum/species/fly,
 						/datum/species/moth,
+						/datum/species/apid,
 						/datum/species/pod,
 						/datum/species/jelly,
 						/datum/species/abductor,
-						/datum/species/squid)
+						/datum/species/skeleton)
 	can_synth = TRUE
 
 /datum/reagent/mutationtoxin/felinid
@@ -548,6 +578,13 @@
 	color = "#5EFF3B" //RGB: 94, 255, 59
 	race = /datum/species/moth
 	taste_description = "clothing"
+
+/datum/reagent/mutationtoxin/apid
+	name = "Apid Mutation Toxin"
+	description = "A sweet-smelling toxin."
+	color = "#5EFF3B" //RGB: 94, 255, 59
+	race = /datum/species/apid
+	taste_description = "honey"
 
 /datum/reagent/mutationtoxin/pod
 	name = "Podperson Mutation Toxin"
@@ -607,12 +644,19 @@
 	race = /datum/species/ipc
 	taste_description = "silicon and copper"
 
-/datum/reagent/mutationtoxin/squid
-	name = "Squid Mutation Toxin"
-	description = "A salty toxin."
+/datum/reagent/mutationtoxin/ethereal
+	name = "Ethereal Mutation Toxin"
+	description = "A positively electric toxin."
 	color = "#5EFF3B" //RGB: 94, 255, 59
-	race = /datum/species/squid
-	taste_description = "fish"
+	race = /datum/species/ethereal
+	taste_description = "shocking"
+
+/datum/reagent/mutationtoxin/oozeling
+	name = "Oozeling Mutation Toxin"
+	description = "An oozing toxin"
+	color = "#611e80" //RGB: 97, 30, 128
+	race = /datum/species/oozeling
+	taste_description = "burning ooze"
 
 //BLACKLISTED RACES
 /datum/reagent/mutationtoxin/skeleton
@@ -694,6 +738,7 @@
 	description = "An advanced corruptive toxin produced by slimes."
 	color = "#13BC5E" // rgb: 19, 188, 94
 	taste_description = "slime"
+	can_synth = FALSE //idedplznerf
 
 /datum/reagent/aslimetoxin/reaction_mob(mob/living/L, method=TOUCH, reac_volume)
 	if(method != TOUCH)
@@ -882,7 +927,7 @@
 	random_unrestricted = FALSE
 
 /datum/reagent/lithium/on_mob_life(mob/living/carbon/M)
-	if((M.mobility_flags & MOBILITY_MOVE) && !isspaceturf(M.loc))
+	if((M.mobility_flags & MOBILITY_MOVE) && !isspaceturf(M.loc) && isturf(M.loc))
 		step(M, pick(GLOB.cardinals))
 	if(prob(5))
 		M.emote(pick("twitch","drool","moan"))
@@ -904,8 +949,8 @@
 	if(method in list(TOUCH, VAPOR, PATCH))
 		for(var/s in C.surgeries)
 			var/datum/surgery/S = s
-			S.success_multiplier = max(0.2, S.success_multiplier)
-			// +20% success propability on each step, useful while operating in less-than-perfect conditions
+			S.speed_modifier = max(0.2, S.speed_modifier)
+			// +20% surgery speed on each step, useful while operating in less-than-perfect conditions
 	..()
 
 /datum/reagent/iron

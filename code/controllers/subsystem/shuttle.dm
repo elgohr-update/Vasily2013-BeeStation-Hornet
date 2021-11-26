@@ -26,7 +26,9 @@ SUBSYSTEM_DEF(shuttle)
 	var/emergencyCallAmount = 0		//how many times the escape shuttle was called
 	var/emergencyNoEscape
 	var/emergencyNoRecall = FALSE
+	var/adminEmergencyNoRecall = FALSE
 	var/list/hostileEnvironments = list() //Things blocking escape shuttle from leaving
+	var/hostileEnvTrackPlayed = FALSE
 	var/list/tradeBlockade = list() //Things blocking cargo from leaving.
 	var/supplyBlocked = FALSE
 
@@ -148,7 +150,7 @@ SUBSYSTEM_DEF(shuttle)
 		message_admins(msg)
 		log_game("[msg] Alive: [alive], Roundstart: [total], Threshold: [threshold]")
 		emergencyNoRecall = TRUE
-		priority_announce("Catastrophic casualties detected: crisis shuttle protocols activated - jamming recall signals across all frequencies.")
+		priority_announce("Catastrophic casualties detected: crisis shuttle protocols activated - jamming recall signals across all frequencies.", sound = SSstation.announcer.get_rand_alert_sound())
 		if(emergency.timeLeft(1) > emergencyCallTime * 0.4)
 			emergency.request(null, set_coefficient = 0.4)
 
@@ -373,12 +375,16 @@ SUBSYSTEM_DEF(shuttle)
 		priority_announce("Hostile environment detected. \
 			Departure has been postponed indefinitely pending \
 			conflict resolution.", null, 'sound/misc/notice1.ogg', "Priority")
+		for(var/i in hostileEnvironments)
+			if(istype(i, /mob/living/carbon/alien/humanoid/royal/queen) && !hostileEnvTrackPlayed)
+				play_soundtrack_music(/datum/soundtrack_song/bee/mind_crawler, only_station = TRUE)
+				hostileEnvTrackPlayed = TRUE
 	if(!emergencyNoEscape && (emergency.mode == SHUTTLE_STRANDED))
 		emergency.mode = SHUTTLE_DOCKED
 		emergency.setTimer(emergencyDockTime)
 		priority_announce("Hostile environment resolved. \
 			You have 3 minutes to board the Emergency Shuttle.",
-			null, 'sound/ai/shuttledock.ogg', "Priority")
+			null, ANNOUNCER_SHUTTLEDOCK, "Priority")
 
 //try to move/request to dockHome if possible, otherwise dockAway. Mainly used for admin buttons
 /datum/controller/subsystem/shuttle/proc/toggleShuttle(shuttleId, dockHome, dockAway, timed)
@@ -636,7 +642,7 @@ SUBSYSTEM_DEF(shuttle)
 	hidden_shuttle_turf_images += add_images
 
 	for(var/V in GLOB.navigation_computers)
-		var/obj/machinery/computer/camera_advanced/shuttle_docker/C = V
+		var/obj/machinery/computer/shuttle_flight/C = V
 		C.update_hidden_docking_ports(remove_images, add_images)
 
 	QDEL_LIST(remove_images)
@@ -697,6 +703,8 @@ SUBSYSTEM_DEF(shuttle)
 	preview_shuttle.mode = mode
 
 	preview_shuttle.register()
+
+	preview_shuttle.reset_air()
 
 	// TODO indicate to the user that success happened, rather than just
 	// blanking the modification tab
@@ -760,6 +768,7 @@ SUBSYSTEM_DEF(shuttle)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
 		ui = new(user, src, "ShuttleManipulator")
+		ui.set_autoupdate(TRUE)
 		ui.open()
 
 

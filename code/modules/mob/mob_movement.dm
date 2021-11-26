@@ -1,7 +1,3 @@
-///Can the atom pass this mob (always true for /mob)
-/mob/CanPass(atom/movable/mover, turf/target)
-	return TRUE				//There's almost no cases where non /living mobs should be used in game as actual mobs, other than ghosts.
-
 /**
   * Get the current movespeed delay of the mob
   *
@@ -152,7 +148,7 @@
 	. = ..()
 
 	if((direct & (direct - 1)) && mob.loc == n) //moved diagonally successfully
-		add_delay *= 2
+		add_delay *= 1.414214 // sqrt(2)
 	move_delay += add_delay
 	if(.) // If mob is null here, we deserve the runtime
 		if(mob.throwing)
@@ -194,9 +190,11 @@
   * * INCORPOREAL_MOVE_BASIC - forceMoved to the next tile with no stop
   * * INCORPOREAL_MOVE_SHADOW  - the same but leaves a cool effect path
   * * INCORPOREAL_MOVE_JAUNT - the same but blocked by holy tiles
+  * * INCORPOREAL_MOVE_EMINCENCE - was invented so that only Eminence can pass through clockwalls
   *
   * You'll note this is another mob living level proc living at the client level
   */
+
 /client/proc/Process_Incorpmove(direct)
 	var/turf/mobloc = get_turf(mob)
 	if(!isliving(mob))
@@ -237,7 +235,7 @@
 						return
 				var/target = locate(locx,locy,mobloc.z)
 				if(target)
-					L.loc = target
+					L.forceMove(target)
 					var/limit = 2//For only two trailing shadows.
 					for(var/turf/T in getline(mobloc, L.loc))
 						new /obj/effect/temp_visual/dir_setting/ninja/shadow(T, L.dir)
@@ -263,14 +261,29 @@
 				if(stepTurf.flags_1 & NOJAUNT_1)
 					to_chat(L, "<span class='warning'>Some strange aura is blocking the way.</span>")
 					return
-				if (locate(/obj/effect/blessing, stepTurf))
+				if(locate(/obj/effect/blessing, stepTurf))
 					to_chat(L, "<span class='warning'>Holy energies block your path!</span>")
 					return
+				L.forceMove(stepTurf)
+			L.setDir(direct)
 
+		if(INCORPOREAL_MOVE_EMINENCE) //Incorporeal move for emincence. Blocks move like Jaunt but lets it pass through clockwalls
+			var/turf/open/floor/stepTurf = get_step(L, direct)
+			var/turf/loccheck = get_turf(stepTurf)
+			if(stepTurf)
+				for(var/obj/effect/decal/cleanable/food/salt/S in stepTurf)
+					to_chat(L, "<span class='warning'>[S] bars your passage!</span>")
+					return
+				if(stepTurf.flags_1 & NOJAUNT_1)
+					if(!is_reebe(loccheck.z))
+						to_chat(L, "<span class='warning'>Some strange aura is blocking the way.</span>")
+						return
+				if(locate(/obj/effect/blessing, stepTurf))
+					to_chat(L, "<span class='warning'>Holy energies block your path!</span>")
+					return
 				L.forceMove(stepTurf)
 			L.setDir(direct)
 	return TRUE
-
 
 /**
   * Handles mob/living movement in space (or no gravity)

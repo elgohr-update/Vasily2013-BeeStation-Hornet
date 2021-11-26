@@ -26,17 +26,21 @@
 	noloot = TRUE
 	faction = list(ROLE_SYNDICATE)
 
+/mob/living/simple_animal/bot/secbot/grievous/nullcrate/ComponentInitialize()
+	. = ..()
+	AddComponent(/datum/component/empprotection, EMP_PROTECT_SELF | EMP_PROTECT_CONTENTS | EMP_PROTECT_WIRES)
+
 /mob/living/simple_animal/bot/secbot/grievous/bullet_act(obj/item/projectile/P)
 	visible_message("[src] deflects [P] with its energy swords!")
 	playsound(src, 'sound/weapons/blade1.ogg', 50, TRUE)
 	return BULLET_ACT_BLOCK
 
-/mob/living/simple_animal/bot/secbot/grievous/Crossed(atom/movable/AM)
-	..()
+/mob/living/simple_animal/bot/secbot/grievous/on_entered(datum/source, atom/movable/AM)
+	. = ..()
 	if(ismob(AM) && AM == target)
 		visible_message("[src] flails his swords and cuts [AM]!")
 		playsound(src,'sound/effects/beepskyspinsabre.ogg',100,TRUE,-1)
-		stun_attack(AM)
+		INVOKE_ASYNC(src, .proc/stun_attack, AM)
 
 /mob/living/simple_animal/bot/secbot/grievous/Initialize()
 	. = ..()

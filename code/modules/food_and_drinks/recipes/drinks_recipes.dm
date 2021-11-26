@@ -656,7 +656,7 @@
 	name = "Peppermint Patty"
 	id = /datum/reagent/consumable/ethanol/peppermint_patty
 	results = list(/datum/reagent/consumable/ethanol/peppermint_patty = 10)
-	required_reagents = list(/datum/reagent/consumable/hot_cocoa = 6, /datum/reagent/consumable/ethanol/creme_de_cacao = 1, /datum/reagent/consumable/ethanol/creme_de_menthe = 1, /datum/reagent/consumable/ethanol/vodka = 1, /datum/reagent/consumable/menthol = 1)
+	required_reagents = list(/datum/reagent/consumable/cocoa/hot_cocoa = 6, /datum/reagent/consumable/ethanol/creme_de_cacao = 1, /datum/reagent/consumable/ethanol/creme_de_menthe = 1, /datum/reagent/consumable/ethanol/vodka = 1, /datum/reagent/consumable/menthol = 1)
 	mix_message = "The cocoa turns mint green just as the strong scent hits your nose."
 
 /datum/chemical_reaction/alexander
@@ -840,3 +840,9 @@
 	id = /datum/reagent/consumable/ethanol/beesknees
 	results = list(/datum/reagent/consumable/ethanol/beesknees = 4)
 	required_reagents = list(/datum/reagent/consumable/ethanol/mead = 1, /datum/reagent/consumable/honey = 1, /datum/reagent/consumable/ethanol/whiskey = 1, /datum/reagent/consumable/lemonjuice = 1)
+
+/datum/chemical_reaction/beeffizz
+	name = "Beef Fizz"
+	id = /datum/reagent/consumable/ethanol/beeffizz
+	results = list(/datum/reagent/consumable/ethanol/beeffizz = 10)
+	required_reagents = list(/datum/reagent/consumable/beefbroth = 7, /datum/reagent/consumable/ice = 2, /datum/reagent/consumable/lemonjuice = 1 )

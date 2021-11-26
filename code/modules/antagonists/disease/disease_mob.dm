@@ -73,10 +73,12 @@ the new instance inside the host to be updated to the template's stats.
 /mob/camera/disease/Destroy()
 	. = ..()
 	QDEL_NULL(adaptation_menu_action)
+	disease_template = null
 	for(var/V in GLOB.sentient_disease_instances)
 		var/datum/disease/advance/sentient_disease/S = V
 		if(S.overmind == src)
 			S.overmind = null
+	browser = null
 
 /mob/camera/disease/Login()
 	..()
@@ -99,8 +101,8 @@ the new instance inside the host to be updated to the template's stats.
 /mob/camera/disease/examine(mob/user)
 	. = ..()
 	if(isobserver(user))
-		. += {"<span class='notice'>[src] has [points]/[total_points] adaptation points.</span>
-		<span class='notice'>[src] has the following unlocked:</span>"}
+		. += "<span class='notice'>[src] has [points]/[total_points] adaptation points.</span>\n"+\
+		"<span class='notice'>[src] has the following unlocked:</span>"
 		for(var/datum/disease_ability/ability in purchased_abilities)
 			. += "<span class='notice'>[ability.name]</span>"
 
@@ -115,7 +117,7 @@ the new instance inside the host to be updated to the template's stats.
 			follow_next(Dir & NORTHWEST)
 			last_move_tick = world.time
 
-/mob/camera/disease/Hear(message, atom/movable/speaker, message_language, raw_message, radio_freq, list/spans, message_mode)
+/mob/camera/disease/Hear(message, atom/movable/speaker, message_language, raw_message, radio_freq, list/spans, list/message_mods = list())
 	. = ..()
 	var/atom/movable/to_follow = speaker
 	if(radio_freq)
@@ -127,7 +129,7 @@ the new instance inside the host to be updated to the template's stats.
 	else
 		link = ""
 	// Recompose the message, because it's scrambled by default
-	message = compose_message(speaker, message_language, raw_message, radio_freq, spans, message_mode)
+	message = compose_message(speaker, message_language, raw_message, radio_freq, spans, message_mods)
 	to_chat(src, "[link] [message]")
 
 
@@ -274,6 +276,8 @@ the new instance inside the host to be updated to the template's stats.
 		set_following(hosts[index])
 
 /mob/camera/disease/proc/follow_mob(datum/source, newloc, dir)
+	SIGNAL_HANDLER
+
 	var/turf/T = get_turf(following_host)
 	if(T)
 		forceMove(T)
@@ -319,10 +323,10 @@ the new instance inside the host to be updated to the template's stats.
 		dat += "<a href='byond://?src=[REF(src)];main_menu=1'>Back</a><br><h1>[examining_ability.name]</h1>[examining_ability.stat_block][examining_ability.long_desc][examining_ability.threshold_block]"
 	else
 		dat += "<h1>Disease Statistics</h1><br>\
-			Resistance: [DT.totalResistance()]<br>\
-			Stealth: [DT.totalStealth()]<br>\
-			Stage Speed: [DT.totalStageSpeed()]<br>\
-			Transmissibility: [DT.totalTransmittable()]<hr>\
+			Resistance: [DT.resistance]<br>\
+			Stealth: [DT.stealth]<br>\
+			Stage Speed: [DT.stage_rate]<br>\
+			Transmissibility: [DT.transmission]<hr>\
 			Cure: [DT.cure_text]"
 		dat += "<hr><h1>Adaptations</h1>\
 			Points: [points] / [total_points]\

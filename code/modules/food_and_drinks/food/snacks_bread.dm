@@ -199,6 +199,14 @@
 	tastes = list("bread" = 1)
 	foodtype = GRAIN
 
+/obj/item/reagent_containers/food/snacks/baguette/mime
+	name = "French Baguette"
+	desc = "It would be a shame if it was consumed by someone unworthy..."
+	bonus_reagents = list(/datum/reagent/consumable/nutriment = 2, /datum/reagent/consumable/nutriment/vitamin = 2, /datum/reagent/consumable/nothing = 1)
+	list_reagents = list(/datum/reagent/consumable/nutriment = 6, /datum/reagent/consumable/nutriment/vitamin = 1, /datum/reagent/consumable/nothing = 2)
+	bitesize = -1
+
+
 /obj/item/reagent_containers/food/snacks/garlicbread
 	name = "garlic bread"
 	desc = "Alas, it is limited."
@@ -237,20 +245,25 @@
 	item_flags = fried.item_flags
 	obj_flags = fried.obj_flags
 
+	RegisterSignal(src, COMSIG_COMPONENT_CLEAN_ACT, .proc/clean_batter)
+
 	if(istype(fried, /obj/item/reagent_containers/food/snacks))
 		fried.reagents.trans_to(src, fried.reagents.total_volume)
 		qdel(fried)
 	else
 		fried.forceMove(src)
 
+/obj/item/reagent_containers/food/snacks/deepfryholder/proc/clean_batter()
+	qdel(src)
+
 /obj/item/reagent_containers/food/snacks/deepfryholder/Destroy()
-	if(contents)
-		QDEL_LIST(contents)
+	UnregisterSignal(src, COMSIG_COMPONENT_CLEAN_ACT)
 	. = ..()
 
 /obj/item/reagent_containers/food/snacks/deepfryholder/On_Consume(mob/living/eater)
 	if(contents)
-		QDEL_LIST(contents)
+		for(var/atom/movable/A in contents)
+			A.forceMove(eater.loc)
 	..()
 
 /obj/item/reagent_containers/food/snacks/deepfryholder/proc/fry(cook_time = 30)

@@ -108,7 +108,7 @@ GLOBAL_VAR(medibot_unique_id_gen)
 
 /mob/living/simple_animal/bot/medbot/bot_reset()
 	..()
-	patient = null
+	set_patient(null)
 	oldpatient = null
 	oldloc = null
 	last_found = world.time
@@ -117,7 +117,7 @@ GLOBAL_VAR(medibot_unique_id_gen)
 
 /mob/living/simple_animal/bot/medbot/proc/soft_reset() //Allows the medibot to still actively perform its medical duties without being completely halted as a hard reset does.
 	path = list()
-	patient = null
+	set_patient(null)
 	mode = BOT_IDLE
 	last_found = world.time
 	update_icon()
@@ -238,13 +238,11 @@ GLOBAL_VAR(medibot_unique_id_gen)
 		return
 
 	if(IsStun() || IsParalyzed())
-		oldpatient = patient
-		patient = null
+		set_patient(null)
 		mode = BOT_IDLE
 		return
 
 	if(frustration > 8)
-		oldpatient = patient
 		soft_reset()
 
 	if(QDELETED(patient))
@@ -254,8 +252,7 @@ GLOBAL_VAR(medibot_unique_id_gen)
 			speak(message)
 			playsound(src, messagevoice[message], 50)
 		var/scan_range = (stationary_mode ? 1 : DEFAULT_SCAN_RANGE) //If in stationary mode, scan range is limited to adjacent patients.
-		patient = scan(/mob/living/carbon/human, oldpatient, scan_range)
-		oldpatient = patient
+		set_patient(scan(/mob/living/carbon/human, oldpatient, scan_range))
 
 	if(patient && (get_dist(src,patient) <= 1)) //Patient is next to us, begin treatment!
 		if(mode != BOT_HEALING)
@@ -276,16 +273,15 @@ GLOBAL_VAR(medibot_unique_id_gen)
 		return
 
 	if(patient && path.len == 0 && (get_dist(src,patient) > 1))
-		path = get_path_to(src, get_turf(patient), /turf/proc/Distance_cardinal, 0, 30,id=access_card)
+		path = get_path_to(src, patient, 30,id=access_card)
 		mode = BOT_MOVING
 		if(!path.len) //try to get closer if you can't reach the patient directly
-			path = get_path_to(src, get_turf(patient), /turf/proc/Distance_cardinal, 0, 30,1,id=access_card)
+			path = get_path_to(src, patient, 30,1,id=access_card)
 			if(!path.len) //Do not chase a patient we cannot reach.
 				soft_reset()
 
 	if(path.len > 0 && patient)
 		if(!bot_move(path[path.len]))
-			oldpatient = patient
 			soft_reset()
 		return
 
@@ -306,7 +302,7 @@ GLOBAL_VAR(medibot_unique_id_gen)
 	//Time to see if they need medical help!
 	if(C.stat == DEAD || (HAS_TRAIT(C, TRAIT_FAKEDEATH)))
 		return FALSE	//welp too late for them!
-	
+
 	var/can_inject = FALSE
 	for(var/X in C.bodyparts)
 		var/obj/item/bodypart/part = X
@@ -332,7 +328,7 @@ GLOBAL_VAR(medibot_unique_id_gen)
 
 	if(ishuman(C))
 		var/mob/living/carbon/human/H = C
-		if (H.wear_suit && H.head && istype(H.wear_suit, /obj/item/clothing) && istype(H.head, /obj/item/clothing))
+		if (H.wear_suit && H.head && isclothing(H.wear_suit) && isclothing(H.head))
 			var/obj/item/clothing/CS = H.wear_suit
 			var/obj/item/clothing/CH = H.head
 			if (CS.clothing_flags & CH.clothing_flags & THICKMATERIAL)
@@ -357,7 +353,7 @@ GLOBAL_VAR(medibot_unique_id_gen)
 /mob/living/simple_animal/bot/medbot/UnarmedAttack(atom/A)
 	if(iscarbon(A))
 		var/mob/living/carbon/C = A
-		patient = C
+		set_patient(C)
 		mode = BOT_HEALING
 		update_icon()
 		medicate_patient(C)
@@ -375,7 +371,6 @@ GLOBAL_VAR(medibot_unique_id_gen)
 		return
 
 	if(!istype(C))
-		oldpatient = patient
 		soft_reset()
 		return
 
@@ -384,7 +379,6 @@ GLOBAL_VAR(medibot_unique_id_gen)
 		var/message = pick(messagevoice)
 		speak(message)
 		playsound(src, messagevoice[message], 50)
-		oldpatient = patient
 		soft_reset()
 		return
 
@@ -423,6 +417,8 @@ GLOBAL_VAR(medibot_unique_id_gen)
 					var/obj/item/storage/firstaid/FA = firstaid
 					if(treatment_method == initial(FA.damagetype_healed)) //using the damage specific medkits give bonuses when healing this type of damage.
 						healies *= 1.5
+					if(treatment_method == TOX && HAS_TRAIT(patient, TRAIT_TOXINLOVER))
+						healies *= -1.5
 					if(emagged == 2)
 						patient.reagents.add_reagent(/datum/reagent/toxin/chloralhydrate, 5)
 						patient.apply_damage_type((healies*1),treatment_method)
@@ -432,7 +428,6 @@ GLOBAL_VAR(medibot_unique_id_gen)
 						log_combat(src, patient, "tended the wounds of", "internal tools", "([uppertext(treatment_method)])")
 					C.visible_message("<span class='danger'>[src] tends the wounds of [patient]!</span>", \
 						"<span class='userdanger'>[src] tends your wounds!</span>")
-					ADD_TRAIT(patient,TRAIT_MEDIBOTCOMINGTHROUGH,medibot_counter)
 				else
 					tending = FALSE
 			else
@@ -462,6 +457,14 @@ GLOBAL_VAR(medibot_unique_id_gen)
 
 	do_sparks(3, TRUE, src)
 	..()
+
+/mob/living/simple_animal/bot/medbot/proc/set_patient(new_patient)
+	if(patient)
+		REMOVE_TRAIT(patient,TRAIT_MEDIBOTCOMINGTHROUGH,medibot_counter)
+		oldpatient = patient
+	patient = new_patient
+	if(patient)
+		ADD_TRAIT(patient,TRAIT_MEDIBOTCOMINGTHROUGH,medibot_counter)
 
 /mob/living/simple_animal/bot/medbot/proc/declare(crit_patient)
 	if(declare_cooldown > world.time)
