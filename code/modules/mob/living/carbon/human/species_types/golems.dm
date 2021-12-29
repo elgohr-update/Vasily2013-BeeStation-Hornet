@@ -252,7 +252,8 @@
 /datum/species/golem/alloy
 	name = "Alien Alloy Golem"
 	id = "alloy golem"
-	fixed_mut_color = "333"
+	species_traits = list(NOBLOOD,NO_UNDERWEAR,NOEYESPRITES)
+	limbs_id = "a_golem"
 	meat = /obj/item/stack/sheet/mineral/abductor
 	mutanttongue = /obj/item/organ/tongue/abductor
 	speedmod = 1 //faster
@@ -506,7 +507,7 @@
 /datum/species/golem/bananium
 	name = "Bananium Golem"
 	id = "bananium golem"
-	fixed_mut_color = "ff0"
+	species_traits = list(NOBLOOD,NO_UNDERWEAR,NOEYESPRITES)
 	say_mod = "honks"
 	punchdamagelow = 0
 	punchdamagehigh = 1
@@ -514,6 +515,7 @@
 	meat = /obj/item/stack/ore/bananium
 	info_text = "As a <span class='danger'>Bananium Golem</span>, you are made for pranking. Your body emits natural honks, and you can barely even hurt people when punching them. Your skin also bleeds banana peels when damaged."
 	attack_verb = "honk"
+	limbs_id = "ba_golem"
 	attack_sound = 'sound/items/airhorn2.ogg'
 	prefix = "Bananium"
 	special_names = null
@@ -653,7 +655,7 @@
 	prefix = "Clockwork"
 	special_names = list("Remnant", "Relic", "Scrap", "Vestige") //RIP Ratvar
 	var/has_corpse
-	
+
 /datum/species/golem/clockwork/on_species_gain(mob/living/carbon/human/H)
 	. = ..()
 	H.faction |= "ratvar"
@@ -975,7 +977,7 @@
 	mutanttongue = /obj/item/organ/tongue/bone
 	sexes = FALSE
 	fixed_mut_color = null
-	inherent_traits = list(TRAIT_RESISTHEAT,TRAIT_NOBREATH,TRAIT_RESISTCOLD,TRAIT_RESISTHIGHPRESSURE,TRAIT_RESISTLOWPRESSURE,TRAIT_NOFIRE,TRAIT_NOGUNS,TRAIT_RADIMMUNE,TRAIT_PIERCEIMMUNE,TRAIT_NODISMEMBER,TRAIT_FAKEDEATH,TRAIT_CALCIUM_HEALER)
+	inherent_traits = list(TRAIT_RESISTHEAT,TRAIT_NOBREATH,TRAIT_RESISTCOLD,TRAIT_RESISTHIGHPRESSURE,TRAIT_RESISTLOWPRESSURE,TRAIT_NOFIRE,TRAIT_NOGUNS,TRAIT_RADIMMUNE,TRAIT_PIERCEIMMUNE,TRAIT_NODISMEMBER,TRAIT_FAKEDEATH)
 	info_text = "As a <span class='danger'>Bone Golem</span>, You have a powerful spell that lets you chill your enemies with fear, and milk heals you! Just make sure to watch our for bone-hurting juice."
 	var/datum/action/innate/bonechill/bonechill
 
@@ -989,6 +991,21 @@
 	if(bonechill)
 		bonechill.Remove(C)
 	..()
+
+/datum/species/golem/bone/handle_chemicals(datum/reagent/chem, mob/living/carbon/human/H)
+	. = ..()
+	if(chem.type == /datum/reagent/consumable/milk)
+		if(chem.volume >= 6)
+			H.reagents.remove_reagent(chem.type, chem.volume - 5)
+			to_chat(H, "<span class='warning'>The excess milk is dripping off your bones!</span>")
+		H.heal_bodypart_damage(1.5,0, 0)
+		H.reagents.remove_reagent(chem.type, REAGENTS_METABOLISM)
+		return TRUE
+
+	if(chem.type == /datum/reagent/toxin/bonehurtingjuice)
+		H.adjustBruteLoss(0.5, 0)
+		H.reagents.remove_reagent(chem.type, REAGENTS_METABOLISM)
+		return TRUE
 
 /datum/action/innate/bonechill
 	name = "Bone Chill"
@@ -1075,7 +1092,7 @@
 	charge_max = 15
 	action_icon = 'icons/obj/toy.dmi'
 	action_icon_state = "snowball"
-		
+
 /datum/species/golem/capitalist
 	name = "Capitalist Golem"
 	id = "capitalist golem"
@@ -1095,8 +1112,7 @@
 
 /datum/species/golem/capitalist/on_species_gain(mob/living/carbon/C, datum/species/old_species)
 	. = ..()
-	C.equip_to_slot_or_del(new /obj/item/clothing/head/that (), SLOT_HEAD)
-	C.equip_to_slot_or_del(new /obj/item/clothing/glasses/monocle (), SLOT_GLASSES)
+	C.equip_to_slot_or_del(new /obj/item/clothing/glasses/sunglasses/advanced (), SLOT_GLASSES)
 	C.revive(full_heal = TRUE)
 
 	SEND_SOUND(C, sound('sound/misc/capitialism.ogg'))

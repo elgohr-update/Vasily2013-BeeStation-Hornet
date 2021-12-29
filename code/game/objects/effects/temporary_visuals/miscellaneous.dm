@@ -238,6 +238,10 @@
 	name = "spooky lights"
 	icon_state = "purplesparkles"
 
+/obj/effect/temp_visual/blightdisease
+	name = "spreadingsickness"
+	icon_state = "greenshatter"
+
 /obj/effect/temp_visual/revenant/cracks
 	name = "glowing cracks"
 	icon_state = "purplecrack"
@@ -462,6 +466,7 @@
 	icon = 'icons/effects/effects_rcd.dmi'
 	icon_state = ""
 	layer = ABOVE_ALL_MOB_LAYER
+	anchored = TRUE
 	var/status = 0
 	var/delay = 0
 
@@ -470,7 +475,7 @@
 	status = rcd_status
 	delay = rcd_delay
 	if (status == RCD_DECONSTRUCT)
-		addtimer(CALLBACK(src, .proc/update_icon), 11)
+		addtimer(CALLBACK(src, /atom/.proc/update_icon), 11)
 		delay -= 11
 		icon_state = "rcd_end_reverse"
 	else

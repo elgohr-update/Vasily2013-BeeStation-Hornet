@@ -50,6 +50,7 @@
 	var/obj/item/organ/appendix/appendix = C.getorganslot("appendix") // Easiest way to remove it.
 	appendix.Remove(C)
 	QDEL_NULL(appendix)
+	ADD_TRAIT(C, TRAIT_XENO_IMMUNE, "xeno immune") //makes the IPC immune to huggers
 	if(ishuman(C) && !change_screen)
 		change_screen = new
 		change_screen.Grant(C)
@@ -65,6 +66,7 @@
 
 datum/species/ipc/on_species_loss(mob/living/carbon/C)
 	. = ..()
+	REMOVE_TRAIT(C, TRAIT_XENO_IMMUNE, "xeno immune")
 	if(change_screen)
 		change_screen.Remove(C)
 
@@ -114,7 +116,7 @@ datum/species/ipc/on_species_loss(mob/living/carbon/C)
 	user.changeNext_move(CLICK_CD_MELEE)
 	var/obj/machinery/power/apc/A = target
 	var/mob/living/carbon/human/H = user
-	var/obj/item/organ/stomach/cell/cell = H.internal_organs_slot["stomach"]
+	var/obj/item/organ/stomach/cell/cell = locate(/obj/item/organ/stomach/cell) in H.internal_organs
 	if(!cell)
 		to_chat(H, "<span class='warning'>You try to siphon energy from the [A], but your power cell is gone!</span>")
 		return

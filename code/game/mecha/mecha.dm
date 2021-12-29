@@ -1,24 +1,10 @@
-#define MECHA_INT_FIRE			(1<<0)
-#define MECHA_INT_TEMP_CONTROL	(1<<1)
-#define MECHA_INT_SHORT_CIRCUIT	(1<<2)
-#define MECHA_INT_TANK_BREACH	(1<<3)
-#define MECHA_INT_CONTROL_LOST	(1<<4)
-
-#define MELEE 1
-#define RANGED 2
-
-#define FRONT_ARMOUR 1
-#define SIDE_ARMOUR 2
-#define BACK_ARMOUR 3
-
-
 /obj/mecha
 	name = "mecha"
 	desc = "Exosuit"
 	icon = 'icons/mecha/mecha.dmi'
 	density = TRUE //Dense. To raise the heat.
 	opacity = 1 ///opaque. Menacing.
-	anchored = TRUE //no pulling around.
+	move_resist = MOVE_FORCE_OVERPOWERING //no pulling around.
 	resistance_flags = FIRE_PROOF | ACID_PROOF
 	layer = BELOW_MOB_LAYER//icon draw layer
 	infra_luminosity = 15 //byond implementation is bugged.
@@ -36,10 +22,10 @@
 	max_integrity = 300 //max_integrity is base health
 	var/deflect_chance = 10 //chance to deflect the incoming projectiles, hits, or lesser the effect of ex_act.
 	armor = list("melee" = 20, "bullet" = 10, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 100)
-	var/list/facing_modifiers = list(FRONT_ARMOUR = 1.5, SIDE_ARMOUR = 1, BACK_ARMOUR = 0.5)
+	var/list/facing_modifiers = list(MECHA_FRONT_ARMOUR = 1.5, MECHA_SIDE_ARMOUR = 1, MECHA_BACK_ARMOUR = 0.5)
 	var/equipment_disabled = 0 //disabled due to EMP
 	var/obj/item/stock_parts/cell/cell
-	var/state = 0
+	var/construction_state = MECHA_LOCKED
 	var/last_message = 0
 	var/add_req_access = 1
 	var/maint_access = 0
@@ -76,6 +62,7 @@
 	var/max_equip = 3
 	var/datum/events/events
 
+	var/step_silent = FALSE //Used for disabling mech step sounds while using thrusters or pushing off lockers
 	var/stepsound = 'sound/mecha/mechstep.ogg'
 	var/turnsound = 'sound/mecha/mechturn.ogg'
 
@@ -97,7 +84,6 @@
 	var/datum/action/innate/mecha/mech_cycle_equip/cycle_action = new
 	var/datum/action/innate/mecha/mech_toggle_lights/lights_action = new
 	var/datum/action/innate/mecha/mech_view_stats/stats_action = new
-	var/datum/action/innate/mecha/mech_toggle_thrusters/thrusters_action = new
 	var/datum/action/innate/mecha/mech_defense_mode/defense_action = new
 	var/datum/action/innate/mecha/mech_overload_mode/overload_action = new
 	var/datum/effect_system/smoke_spread/smoke_system = new //not an action, but trigged by one
@@ -108,7 +94,7 @@
 	var/datum/action/innate/mecha/strafe/strafing_action = new
 
 	//Action vars
-	var/thrusters_active = FALSE
+	var/obj/item/mecha_parts/mecha_equipment/thrusters/active_thrusters
 	var/defense_mode = FALSE
 	var/leg_overload_mode = FALSE
 	var/leg_overload_coeff = 100
@@ -222,8 +208,6 @@
 
 /obj/mecha/proc/restore_equipment()
 	equipment_disabled = 0
-	if(istype(src, /obj/mecha/combat))
-		mouse_pointer = 'icons/mecha/mecha_mouse.dmi'
 	if(occupant)
 		SEND_SOUND(occupant, sound('sound/items/timer.ogg', volume=50))
 		to_chat(occupant, "<span=notice>Equipment control unit has been rebooted successfuly.</span>")
@@ -479,7 +463,7 @@
 		return
 	if(user.incapacitated())
 		return
-	if(state)
+	if(construction_state)
 		occupant_message("<span class='warning'>Maintenance protocols in effect.</span>")
 		return
 	if(!get_charge())
@@ -537,17 +521,22 @@
 /obj/mecha/Process_Spacemove(var/movement_dir = 0)
 	. = ..()
 	if(.)
-		return 1
-	if(thrusters_active && movement_dir && use_power(step_energy_drain))
-		return 1
+		return TRUE
 
 	var/atom/movable/backup = get_spacemove_backup()
 	if(backup)
 		if(istype(backup) && movement_dir && !backup.anchored)
 			if(backup.newtonian_move(turn(movement_dir, 180)))
+				step_silent = TRUE
 				if(occupant)
 					to_chat(occupant, "<span class='info'>You push off of [backup] to propel yourself.</span>")
-		return 1
+		return TRUE
+
+	if(can_move <= world.time && active_thrusters && movement_dir && active_thrusters.thrust(movement_dir))
+		step_silent = TRUE
+		return TRUE
+
+	return FALSE
 
 /obj/mecha/relaymove(mob/user,direction)
 	if(completely_disabled)
@@ -563,7 +552,7 @@
 			occupant_message("<span class='warning'>Unable to move while connected to the air system port!</span>")
 			last_message = world.time
 		return 0
-	if(state)
+	if(construction_state)
 		occupant_message("<span class='danger'>Maintenance protocols in effect.</span>")
 		return
 	return domove(direction)
@@ -598,7 +587,7 @@
 /obj/mecha/proc/mechturn(direction)
 	setDir(direction)
 	if(turnsound)
-		playsound(src,turnsound,40,1)
+		playsound(src,turnsound,40,TRUE)
 	return 1
 
 /obj/mecha/proc/mechstep(direction)
@@ -606,14 +595,16 @@
 	var/result = step(src,direction)
 	if(strafe)
 		setDir(current_dir)
-	if(result && stepsound)
+	if(result && !step_silent)
 		playsound(src,stepsound,40,1)
+	step_silent = FALSE
 	return result
 
 /obj/mecha/proc/mechsteprand()
 	var/result = step_rand(src)
-	if(result && stepsound)
+	if(result && !step_silent)
 		playsound(src,stepsound,40,1)
+	step_silent = FALSE
 	return result
 
 /obj/mecha/Bump(var/atom/obstacle)
@@ -728,7 +719,7 @@
  //Transfer from core or card to mech. Proc is called by mech.
 	switch(interaction)
 		if(AI_TRANS_TO_CARD) //Upload AI from mech to AI card.
-			if(!state) //Mech must be in maint mode to allow carding.
+			if(!construction_state) //Mech must be in maint mode to allow carding.
 				to_chat(user, "<span class='warning'>[name] must have maintenance protocols active in order to allow a transfer.</span>")
 				return
 			AI = occupant
@@ -908,7 +899,7 @@
 	return
 
 /obj/mecha/proc/moved_inside(mob/living/carbon/human/H)
-	if(H && H.client && H in range(1))
+	if(H && H.client && (H in range(1)))
 		occupant = H
 		H.forceMove(src)
 		H.update_mouse_pointer()

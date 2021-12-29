@@ -61,8 +61,6 @@
 
 	var/parallax_movedir = 0
 
-	var/global/global_uid = 0
-	var/uid
 	var/list/ambientsounds = GENERIC
 	flags_1 = CAN_BE_DIRTY_1
 
@@ -130,7 +128,6 @@ GLOBAL_LIST_EMPTY(teleportlocs)
 /area/Initialize()
 	icon_state = ""
 	layer = AREA_LAYER
-	uid = ++global_uid
 	map_name = name // Save the initial (the name set in the map) name of the area.
 	canSmoothWithAreas = typecacheof(canSmoothWithAreas)
 
@@ -438,12 +435,12 @@ GLOBAL_LIST_EMPTY(teleportlocs)
 		L.update()
 
 /**
-  * Update the icon of the area
+  * Update the icon state of the area
   *
   * Im not sure what the heck this does, somethign to do with weather being able to set icon
   * states on areas?? where the heck would that even display?
   */
-/area/proc/update_icon()
+/area/update_icon_state()
 	var/weather_icon
 	for(var/V in SSweather.processing)
 		var/datum/weather/W = V
@@ -456,7 +453,7 @@ GLOBAL_LIST_EMPTY(teleportlocs)
 /**
   * Update the icon of the area (overridden to always be null for space
   */
-/area/space/update_icon()
+/area/space/update_icon_state()
 	icon_state = null
 
 

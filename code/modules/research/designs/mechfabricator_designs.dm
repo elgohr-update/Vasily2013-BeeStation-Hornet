@@ -766,8 +766,8 @@
 	build_path = /obj/item/borg/upgrade/beaker_app
 	materials = list(/datum/material/iron = 2000, /datum/material/glass = 2250) //Need glass for the new beaker too
 	construction_time = 120
-	category = list("Cyborg Upgrade Modules")	
-	
+	category = list("Cyborg Upgrade Modules")
+
 /datum/design/borg_upgrade_pinpointer
 	name = "Cyborg Upgrade (Crew pinpointer)"
 	id = "borg_upgrade_pinpointer"
@@ -803,7 +803,7 @@
 	build_type = MECHFAB
 	materials = list(/datum/material/iron = 750, /datum/material/glass = 750)
 	construction_time = 100
-	build_path = /obj/item/assembly/flash/handheld
+	build_path = /obj/item/assembly/flash/handheld/weak
 	category = list("Misc")
 
 // IPC Replacement Parts
@@ -813,7 +813,7 @@
 	id = "robotic_liver"
 	build_type = MECHFAB
 	build_path = /obj/item/organ/liver/cybernetic/upgraded/ipc
-	materials = list(MAT_IRON=2000, MAT_GLASS=1000)
+	materials = list(/datum/material/iron = 2000, /datum/material/glass = 1000)
 	construction_time = 100
 	category = list("IPC Components")
 
@@ -822,7 +822,7 @@
 	id = "robotic_eyes"
 	build_type = MECHFAB
 	build_path = /obj/item/organ/eyes/robotic
-	materials = list(MAT_IRON=1000, MAT_GLASS=2000)
+	materials = list(/datum/material/iron = 1000, /datum/material/glass = 2000)
 	construction_time = 100
 	category = list("IPC Components")
 
@@ -831,7 +831,7 @@
 	id = "robotic_tongue"
 	build_type = MECHFAB
 	build_path = /obj/item/organ/tongue/robot
-	materials = list(MAT_IRON=2000, MAT_GLASS=1000)
+	materials = list(/datum/material/iron = 2000, /datum/material/glass = 1000)
 	construction_time = 100
 	category = list("IPC Components")
 
@@ -840,7 +840,7 @@
 	id = "robotic_stomach"
 	build_type = MECHFAB
 	build_path = /obj/item/organ/stomach/cell
-	materials = list(MAT_IRON=2000, MAT_GLASS=2000, MAT_PLASMA=200)
+	materials = list(/datum/material/iron = 2000, /datum/material/glass = 2000, /datum/material/plasma = 200)
 	construction_time = 100
 	category = list("IPC Components")
 
@@ -849,7 +849,7 @@
 	id = "robotic_ears"
 	build_type = MECHFAB
 	build_path = /obj/item/organ/ears/robot
-	materials = list(MAT_IRON=2000, MAT_GLASS=1000)
+	materials = list(/datum/material/iron = 2000, /datum/material/glass = 1000)
 	construction_time = 100
 	category = list("IPC Components")
 
@@ -858,6 +858,6 @@
 	id = "power_cord"
 	build_type = MECHFAB
 	build_path = /obj/item/organ/cyberimp/arm/power_cord
-	materials = list(MAT_IRON=2000, MAT_GLASS=1000)
+	materials = list(/datum/material/iron = 2000, /datum/material/glass = 1000)
 	construction_time = 100
-	category = list("IPC Components") 
+	category = list("IPC Components")

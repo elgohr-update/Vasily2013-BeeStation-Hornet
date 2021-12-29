@@ -161,7 +161,7 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 	var/should_have_eyes = TRUE
 	var/should_have_ears = TRUE
 	var/should_have_tongue = TRUE
-	var/should_have_liver = !(NOLIVER in species_traits)
+	var/should_have_liver = !(TRAIT_NOMETABOLISM in inherent_traits)
 	var/should_have_stomach = !(NOSTOMACH in species_traits)
 	var/should_have_tail = mutanttail
 
@@ -312,6 +312,12 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 		for(var/datum/disease/A in C.diseases)
 			A.cure(FALSE)
 
+	if(TRAIT_TOXIMMUNE in inherent_traits)
+		C.setToxLoss(0, TRUE, TRUE)
+
+	if(TRAIT_NOMETABOLISM in inherent_traits)
+		C.reagents.end_metabolization(C, keep_liverless = TRUE)
+
 	C.add_movespeed_modifier(MOVESPEED_ID_SPECIES, TRUE, 100, override=TRUE, multiplicative_slowdown=speedmod, movetypes=(~FLYING))
 
 	SEND_SIGNAL(C, COMSIG_SPECIES_GAIN, src, old_species)
@@ -406,6 +412,8 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 				if(hair_color)
 					if(hair_color == "mutcolor")
 						facial_overlay.color = "#" + H.dna.features["mcolor"]
+					else if (hair_color =="fixedmutcolor")
+						facial_overlay.color = "#[fixed_mut_color]"
 					else
 						facial_overlay.color = "#" + hair_color
 				else
@@ -466,6 +474,8 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 					if(hair_color)
 						if(hair_color == "mutcolor")
 							hair_overlay.color = "#" + H.dna.features["mcolor"]
+						else if(hair_color == "fixedmutcolor")
+							hair_overlay.color = "#[fixed_mut_color]"
 						else
 							hair_overlay.color = "#" + hair_color
 					else
@@ -1023,11 +1033,11 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 
 /**
  * Equip the outfit required for life. Replaces items currently worn.
- */ 
+ */
 /datum/species/proc/give_important_for_life(mob/living/carbon/human/human_to_equip)
 	if(!outfit_important_for_life)
 		return
-		
+
 	outfit_important_for_life= new()
 	outfit_important_for_life.equip(human_to_equip)
 
@@ -1044,12 +1054,14 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 		if(H.overeatduration < 100)
 			to_chat(H, "<span class='notice'>You feel fit again!</span>")
 			REMOVE_TRAIT(H, TRAIT_FAT, OBESITY)
+			H.remove_movespeed_modifier(MOVESPEED_ID_FAT)
 			H.update_inv_w_uniform()
 			H.update_inv_wear_suit()
 	else
 		if(H.overeatduration >= 100)
 			to_chat(H, "<span class='danger'>You suddenly feel blubbery!</span>")
 			ADD_TRAIT(H, TRAIT_FAT, OBESITY)
+			H.add_movespeed_modifier(MOVESPEED_ID_FAT, multiplicative_slowdown = 1.5)
 			H.update_inv_w_uniform()
 			H.update_inv_wear_suit()
 
@@ -1060,10 +1072,14 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 		var/datum/component/mood/mood = H.GetComponent(/datum/component/mood)
 		if(mood && mood.sanity > SANITY_DISTURBED)
 			hunger_rate *= max(0.5, 1 - 0.002 * mood.sanity) //0.85 to 0.75
-
-		if(H.satiety > 0)
+		// Whether we cap off our satiety or move it towards 0
+		if(H.satiety > MAX_SATIETY)
+			H.satiety = MAX_SATIETY
+		else if(H.satiety > 0)
 			H.satiety--
-		if(H.satiety < 0)
+		else if(H.satiety < -MAX_SATIETY)
+			H.satiety = -MAX_SATIETY
+		else if(H.satiety < 0)
 			H.satiety++
 			if(prob(round(-H.satiety/40)))
 				H.Jitter(5)
@@ -1094,6 +1110,19 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 		if(H.metabolism_efficiency == 1.25)
 			to_chat(H, "<span class='notice'>You no longer feel vigorous.</span>")
 		H.metabolism_efficiency = 1
+
+	//Hunger slowdown for if mood isn't enabled
+	if(CONFIG_GET(flag/disable_human_mood))
+		if(!HAS_TRAIT(H, TRAIT_NOHUNGER))
+			var/hungry = (500 - H.nutrition) / 5 //So overeat would be 100 and default level would be 80
+			if(hungry >= 70)
+				H.add_movespeed_modifier(MOVESPEED_ID_HUNGRY, override = TRUE, multiplicative_slowdown = (hungry / 50))
+			else if(isethereal(H))
+				var/datum/species/ethereal/E = H.dna.species
+				if(E.ethereal_charge <= ETHEREAL_CHARGE_NORMAL)
+					H.add_movespeed_modifier(MOVESPEED_ID_HUNGRY, override = TRUE, multiplicative_slowdown = (1.5 * (1 - E.ethereal_charge / 100)))
+			else
+				H.remove_movespeed_modifier(MOVESPEED_ID_HUNGRY)
 
 	switch(H.nutrition)
 		if(NUTRITION_LEVEL_FULL to INFINITY)
@@ -1159,49 +1188,24 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 
 /datum/species/proc/movement_delay(mob/living/carbon/human/H)
 	. = 0	//We start at 0.
-	var/flight = 0	//Check for flight and flying items
 	var/gravity = 0
-	if(H.movement_type & FLYING)
-		flight = 1
+	gravity = H.has_gravity()	
 
-	gravity = H.has_gravity()
-
-	if(!HAS_TRAIT(H, TRAIT_IGNORESLOWDOWN) && gravity)
-		if(H.wear_suit)
-			. += H.wear_suit.slowdown
-		if(H.shoes)
-			. += H.shoes.slowdown
-		if(H.back)
-			. += H.back.slowdown
-		for(var/obj/item/I in H.held_items)
-			if(I.item_flags & SLOWS_WHILE_IN_HAND)
+	if(!HAS_TRAIT(H, TRAIT_IGNORESLOWDOWN) && gravity)	
+		if(H.wear_suit)	
+			. += H.wear_suit.slowdown	
+		if(H.shoes)	
+			. += H.shoes.slowdown	
+		if(H.back)	
+			. += H.back.slowdown	
+		for(var/obj/item/I in H.held_items)	
+			if(I.item_flags & SLOWS_WHILE_IN_HAND)	
 				. += I.slowdown
-		if(!HAS_TRAIT(H, TRAIT_IGNOREDAMAGESLOWDOWN))
-			var/health_deficiency = max(H.maxHealth - H.health, H.staminaloss)
-			if(health_deficiency >= HEALTH_DEF_MOVESPEED_DAMAGE_MIN)
-				if(flight)
-					. += min(((health_deficiency) ** HEALTH_DEF_MOVESPEED_POW) / HEALTH_DEF_MOVESPEED_FLIGHT_DIV, HEALTH_DEF_MOVESPEED_DELAY_MAX)
-				else
-					. += min(((health_deficiency) ** HEALTH_DEF_MOVESPEED_POW) / HEALTH_DEF_MOVESPEED_DIV, HEALTH_DEF_MOVESPEED_DELAY_MAX)
-		if(CONFIG_GET(flag/disable_human_mood))
-			if(!HAS_TRAIT(H, TRAIT_NOHUNGER))
-				var/hungry = (500 - H.nutrition) / 5 //So overeat would be 100 and default level would be 80
-				if((hungry >= 70) && !flight) //Being hungry will still allow you to use a flightsuit/wings.
-					. += hungry / 50
-			else if(isethereal(H))
-				var/datum/species/ethereal/E = H.dna.species
-				if(E.ethereal_charge <= ETHEREAL_CHARGE_NORMAL)
-					. += 1.5 * (1 - E.ethereal_charge / 100)
 
-		//Moving in high gravity is very slow (Flying too)
 		if(gravity > STANDARD_GRAVITY)
 			var/grav_force = min(gravity - STANDARD_GRAVITY,3)
 			. += 1 + grav_force
 
-		if(HAS_TRAIT(H, TRAIT_FAT))
-			. += (1.5 - flight)
-		if(H.bodytemperature < BODYTEMP_COLD_DAMAGE_LIMIT && !HAS_TRAIT(H, TRAIT_RESISTCOLD))
-			. += (BODYTEMP_COLD_DAMAGE_LIMIT - H.bodytemperature) / COLD_SLOWDOWN_FACTOR
 	return .
 
 
@@ -1389,7 +1393,7 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 
 		if(target.IsKnockdown() && !target.IsParalyzed())
 			target.Paralyze(SHOVE_CHAIN_PARALYZE)
-			target.visible_message("<span class='danger'>[user.name] kicks [target.name] onto their side!</span>",
+			target.visible_message("<span class='danger'>[user.name] kicks [target.name] onto [target.p_their()] side!</span>",
 				"<span class='danger'>[user.name] kicks you onto your side!</span>", null, COMBAT_MESSAGE_RANGE)
 			addtimer(CALLBACK(target, /mob/living/proc/SetKnockdown, 0), SHOVE_CHAIN_PARALYZE)
 			log_combat(user, target, "kicks", "onto their side (paralyzing)")
@@ -1407,13 +1411,15 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 						if(O.flags_1 & ON_BORDER_1 && O.dir == turn(shove_dir, 180) && O.density)
 							directional_blocked = TRUE
 							break
-			if((!target_table && !target_collateral_human) || directional_blocked)
+			if((!target_table && !target_collateral_human && !target_disposal_bin) || directional_blocked)
 				target.Knockdown(SHOVE_KNOCKDOWN_SOLID)
-				user.visible_message("<span class='danger'>[user.name] shoves [target.name], knocking them down!</span>",
-					"<span class='danger'>You shove [target.name], knocking them down!</span>", null, COMBAT_MESSAGE_RANGE)
+				target.drop_all_held_items()
+				user.visible_message("<span class='danger'>[user.name] shoves [target.name], knocking [target.p_them()] down!</span>",
+					"<span class='danger'>You shove [target.name], knocking [target.p_them()] down!</span>", null, COMBAT_MESSAGE_RANGE)
 				log_combat(user, target, "shoved", "knocking them down")
 			else if(target_table)
 				target.Knockdown(SHOVE_KNOCKDOWN_TABLE)
+				target.drop_all_held_items()
 				user.visible_message("<span class='danger'>[user.name] shoves [target.name] onto \the [target_table]!</span>",
 					"<span class='danger'>You shove [target.name] onto \the [target_table]!</span>", null, COMBAT_MESSAGE_RANGE)
 				target.throw_at(target_table, 1, 1, null, FALSE) //1 speed throws with no spin are basically just forcemoves with a hard collision check
@@ -1543,7 +1549,7 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 			if(BODY_ZONE_HEAD)
 				if(!I.is_sharp() && armor_block < 50)
 					if(prob(I.force))
-						H.adjustBrainLoss(20)
+						H.adjustOrganLoss(ORGAN_SLOT_BRAIN, 20)
 						if(H.stat == CONSCIOUS)
 							H.visible_message("<span class='danger'>[H] is knocked senseless!</span>", \
 											"<span class='userdanger'>You're knocked senseless!</span>")
@@ -1552,7 +1558,7 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 						if(prob(10))
 							H.gain_trauma(/datum/brain_trauma/mild/concussion)
 					else
-						H.adjustBrainLoss(I.force * 0.2)
+						H.adjustOrganLoss(ORGAN_SLOT_BRAIN, I.force * 0.2)
 
 					if(H.mind && H.stat == CONSCIOUS && H != user && prob(I.force + ((100 - H.health) * 0.5))) // rev deconversion through blunt trauma.
 						var/datum/antagonist/rev/rev = H.mind.has_antag_datum(/datum/antagonist/rev)
@@ -1641,7 +1647,7 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 				H.adjustStaminaLoss(damage_amount)
 		if(BRAIN)
 			var/damage_amount = forced ? damage : damage * hit_percent * H.physiology.brain_mod
-			H.adjustBrainLoss(damage_amount)
+			H.adjustOrganLoss(ORGAN_SLOT_BRAIN, damage_amount)
 	return 1
 
 /datum/species/proc/on_hit(obj/item/projectile/P, mob/living/carbon/human/H)
@@ -1704,6 +1710,8 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 		SEND_SIGNAL(H, COMSIG_CLEAR_MOOD_EVENT, "cold")
 		SEND_SIGNAL(H, COMSIG_ADD_MOOD_EVENT, "hot", /datum/mood_event/hot)
 
+		H.remove_movespeed_modifier(MOVESPEED_ID_COLD)
+
 		var/burn_damage
 		var/firemodifier = H.fire_stacks / 50
 		if (H.on_fire)
@@ -1727,6 +1735,8 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 	else if(H.bodytemperature < BODYTEMP_COLD_DAMAGE_LIMIT && !HAS_TRAIT(H, TRAIT_RESISTCOLD))
 		SEND_SIGNAL(H, COMSIG_CLEAR_MOOD_EVENT, "hot")
 		SEND_SIGNAL(H, COMSIG_ADD_MOOD_EVENT, "cold", /datum/mood_event/cold)
+		//Sorry for the nasty oneline but I don't want to assign a variable on something run pretty frequently
+		H.add_movespeed_modifier(MOVESPEED_ID_COLD, override = TRUE, multiplicative_slowdown = ((BODYTEMP_COLD_DAMAGE_LIMIT - H.bodytemperature) / COLD_SLOWDOWN_FACTOR), blacklisted_movetypes = FLOATING)
 		switch(H.bodytemperature)
 			if(200 to BODYTEMP_COLD_DAMAGE_LIMIT)
 				H.throw_alert("temp", /obj/screen/alert/cold, 1)
@@ -1740,6 +1750,7 @@ GLOBAL_LIST_EMPTY(roundstart_races)
 
 	else
 		H.clear_alert("temp")
+		H.remove_movespeed_modifier(MOVESPEED_ID_COLD)
 		SEND_SIGNAL(H, COMSIG_CLEAR_MOOD_EVENT, "cold")
 		SEND_SIGNAL(H, COMSIG_CLEAR_MOOD_EVENT, "hot")
 
