@@ -9,6 +9,8 @@
 	supervisors = "the chief medical officer"
 	selection_color = "#d4ebf2"
 	chat_color = "#6CB1C5"
+	exp_requirements = 120
+	exp_type = EXP_TYPE_CREW
 
 	outfit = /datum/outfit/job/doctor
 
@@ -18,6 +20,12 @@
 	paycheck_department = ACCOUNT_MED
 
 	display_order = JOB_DISPLAY_ORDER_MEDICAL_DOCTOR
+	departments = DEPARTMENT_MEDICAL
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman/medical
+	)
+	biohazard = 20
 
 /datum/outfit/job/doctor
 	name = "Medical Doctor"
@@ -26,9 +34,10 @@
 	id = /obj/item/card/id/job/med
 	belt = /obj/item/pda/medical
 	ears = /obj/item/radio/headset/headset_med
-	uniform = /obj/item/clothing/under/rank/medical
+	uniform = /obj/item/clothing/under/rank/medical/doctor
 	shoes = /obj/item/clothing/shoes/sneakers/white
 	suit =  /obj/item/clothing/suit/toggle/labcoat
+	gloves = /obj/item/clothing/gloves/color/latex/nitrile
 	l_hand = /obj/item/storage/firstaid/medical
 	suit_store = /obj/item/flashlight/pen
 

@@ -1,5 +1,5 @@
 /*****************Marker Beacons**************************/
-GLOBAL_LIST_INIT(marker_beacon_colors, list(
+GLOBAL_LIST_INIT(marker_beacon_colors, sortList(list(
 "Random" = FALSE, //not a true color, will pick a random color
 "Burgundy" = LIGHT_COLOR_FLARE,
 "Bronze" = LIGHT_COLOR_ORANGE,
@@ -12,7 +12,7 @@ GLOBAL_LIST_INIT(marker_beacon_colors, list(
 "Indigo" = LIGHT_COLOR_DARK_BLUE,
 "Purple" = LIGHT_COLOR_PURPLE,
 "Violet" = LIGHT_COLOR_LAVENDER,
-"Fuchsia" = LIGHT_COLOR_PINK))
+"Fuchsia" = LIGHT_COLOR_PINK)))
 
 /obj/item/stack/marker_beacon
 	name = "marker beacon"
@@ -37,8 +37,8 @@ GLOBAL_LIST_INIT(marker_beacon_colors, list(
 
 /obj/item/stack/marker_beacon/examine(mob/user)
 	. = ..()
-	. += {"<span class='notice'>Use in-hand to place a [singular_name].\n
-	Alt-click to select a color. Current color is [picked_color].</span>"}
+	. += "<span class='notice'>Use in-hand to place a [singular_name].\n"+\
+	"Alt-click to select a color. Current color is [picked_color].</span>"
 
 /obj/item/stack/marker_beacon/update_icon()
 	icon_state = "marker[lowertext(picked_color)]"
@@ -72,7 +72,7 @@ GLOBAL_LIST_INIT(marker_beacon_colors, list(
 	icon = 'icons/obj/lighting.dmi'
 	icon_state = "markerrandom"
 	layer = BELOW_OPEN_DOOR_LAYER
-	armor = list("melee" = 50, "bullet" = 75, "laser" = 75, "energy" = 75, "bomb" = 25, "bio" = 100, "rad" = 100, "fire" = 25, "acid" = 0)
+	armor = list("melee" = 50, "bullet" = 75, "laser" = 75, "energy" = 75, "bomb" = 25, "bio" = 100, "rad" = 100, "fire" = 25, "acid" = 0, "stamina" = 0)
 	max_integrity = 50
 	anchored = TRUE
 	light_range = 2
@@ -135,7 +135,6 @@ GLOBAL_LIST_INIT(marker_beacon_colors, list(
 	return ..()
 
 /obj/structure/marker_beacon/AltClick(mob/living/user)
-	..()
 	if(!istype(user) || !user.canUseTopic(src, BE_CLOSE))
 		return
 	var/input_color = input(user, "Choose a color.", "Beacon Color") as null|anything in GLOB.marker_beacon_colors

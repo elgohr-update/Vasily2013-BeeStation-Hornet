@@ -54,11 +54,15 @@
 
 /datum/config_entry/flag/log_game	// log game events
 
+/datum/config_entry/flag/log_objective	// log antag objectives
+
 /datum/config_entry/flag/log_mecha	// log mech data
 
 /datum/config_entry/flag/log_virus	// log virology data
 
 /datum/config_entry/flag/log_cloning // log cloning actions.
+
+/datum/config_entry/flag/log_id		//log ID changes
 
 /datum/config_entry/flag/log_vote	// log voting
 
@@ -199,16 +203,16 @@
 /datum/config_entry/string/banappeals
 
 /datum/config_entry/string/wikiurl
-	config_entry_value = "http://www.tgstation13.org/wiki"
+	config_entry_value = "https://wiki.beestation13.com/view/Main_Page"
 
 /datum/config_entry/string/forumurl
-	config_entry_value = "http://tgstation13.org/phpBB/index.php"
+	config_entry_value = "https://forums.beestation13.com/"
 
 /datum/config_entry/string/rulesurl
-	config_entry_value = "http://www.tgstation13.org/wiki/Rules"
+	config_entry_value = "https://beestation13.com/rules"
 
 /datum/config_entry/string/githuburl
-	config_entry_value = "https://www.github.com/tgstation/-tg-station"
+	config_entry_value = "https://github.com/BeeStation/BeeStation-Hornet"
 
 /datum/config_entry/string/issue_label
 
@@ -323,6 +327,8 @@
 
 /datum/config_entry/flag/panic_bunker	// prevents people the server hasn't seen before from connecting
 
+/datum/config_entry/number/panic_bunker_living // living time in minutes that a player needs to pass the panic bunker
+
 /datum/config_entry/string/panic_bunker_message
 	config_entry_value = "Sorry but the server is currently not accepting connections from never before seen players."
 
@@ -332,7 +338,7 @@
 /datum/config_entry/number/notify_new_player_account_age	// how long do we notify admins of a new byond account
 	min_val = 0
 
-/datum/config_entry/flag/irc_first_connection_alert	// do we notify the irc channel when somebody is connecting for the first time?
+/datum/config_entry/flag/irc_first_connection_alert	// do we notify the irc/discord channel when somebody is connecting for the first time?
 
 /datum/config_entry/flag/check_randomizer
 
@@ -480,6 +486,8 @@
 /datum/config_entry/string/default_view
 	config_entry_value = "15x15"
 
+/datum/config_entry/flag/menu_square_view
+
 /datum/config_entry/flag/log_pictures
 
 /datum/config_entry/flag/picture_logging_camera
@@ -520,9 +528,39 @@
 
 /datum/config_entry/flag/auto_profile
 
+/datum/config_entry/string/centcom_ban_db	// URL for the CentCom Galactic Ban DB API
+
 /datum/config_entry/flag/ic_filter_enabled
 
 /datum/config_entry/flag/ooc_filter_enabled
 
 /datum/config_entry/string/redirect_address
 	config_entry_value = ""
+
+/datum/config_entry/flag/vote_autotransfer_enabled //toggle for autotransfer system
+
+/datum/config_entry/number/vote_autotransfer_initial //length of time before the first autotransfer vote is called (deciseconds, default 2 hours)
+	config_entry_value = 72000
+	integer = FALSE
+	min_val = 0
+
+/datum/config_entry/number/vote_autotransfer_interval //length of time to wait before subsequent autotransfer votes (deciseconds, default 30 minutes)
+	config_entry_value = 18000
+	integer = FALSE
+	min_val = 0
+
+/datum/config_entry/flag/respect_upstream_bans
+
+/datum/config_entry/flag/respect_upstream_permabans
+
+/datum/config_entry/number/ghost_role_cooldown
+	config_entry_value = 0
+	min_val = 0
+
+
+// Elasticsearch stuffs
+/datum/config_entry/flag/elasticsearch_metrics_enabled
+
+/datum/config_entry/string/elasticsearch_metrics_endpoint
+
+/datum/config_entry/string/elasticsearch_metrics_apikey

@@ -80,3 +80,32 @@
 	rename_team = "The Juggernaut"
 	mission = "Send them straight back to Hell."
 	polldesc = "an elite Nanotrasen enhanced supersoldier"
+
+/datum/ert/clown
+	roles = list(/datum/antagonist/ert/clown)
+	leader_role = /datum/antagonist/ert/clown
+	teamsize = 7
+	opendoors = FALSE
+	rename_team = "The Circus"
+	mission = "Provide vital morale support to the station in this time of crisis"
+	code = "Banana"
+
+/datum/ert/honk
+	roles = list(/datum/antagonist/ert/clown/honk)
+	leader_role = /datum/antagonist/ert/clown/honk
+	teamsize = 5
+	opendoors = TRUE
+	rename_team = "HONK Squad"
+	mission = "HONK them into submission"
+	polldesc = "an elite Nanotrasen tactical pranking squad"
+	code = "HOOOOOOOOOONK"
+
+/datum/ert/kudzu
+	roles = list(/datum/antagonist/ert/kudzu)
+	leader_role = /datum/antagonist/ert/kudzu
+	teamsize = 5
+	opendoors = FALSE
+	rename_team = "Weed Whackers"
+	mission = "Eliminate the kudzu with extreme prejudice"
+	polldesc = "an elite gardening team"
+	code = "Vine Green"

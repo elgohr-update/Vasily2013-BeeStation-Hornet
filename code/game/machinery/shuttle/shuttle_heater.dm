@@ -22,13 +22,13 @@
 
 	density = TRUE
 	max_integrity = 400
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 30)
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 30, "stamina" = 0)
 	layer = OBJ_LAYER
 	showpipe = TRUE
 
 	pipe_flags = PIPING_ONE_PER_TURF | PIPING_DEFAULT_LAYER_ONLY
 
-	var/gas_type = /datum/gas/plasma
+	var/gas_type = GAS_PLASMA
 	var/efficiency_multiplier = 1
 	var/gas_capacity = 0
 
@@ -83,16 +83,14 @@
 /obj/machinery/atmospherics/components/unary/shuttle/heater/examine(mob/user)
 	. = ..()
 	var/datum/gas_mixture/air_contents = airs[1]
-	. += "The engine heater's gas dial reads [air_contents.gases[gas_type][MOLES]] moles of gas.<br>"
+	. += "The engine heater's gas dial reads [air_contents.get_moles(gas_type)] moles of gas.<br>"
 
 /obj/machinery/atmospherics/components/unary/shuttle/heater/proc/updateGasStats()
 	var/datum/gas_mixture/air_contents = airs[1]
 	if(!air_contents)
 		return
-	air_contents.volume = gas_capacity
-	air_contents.temperature = T20C
-	if(gas_type)
-		air_contents.assert_gas(gas_type)
+	air_contents.set_volume(gas_capacity)
+	air_contents.set_temperature(T20C)
 
 /obj/machinery/atmospherics/components/unary/shuttle/heater/proc/hasFuel(var/required)
 	var/datum/gas_mixture/air_contents = airs[1]

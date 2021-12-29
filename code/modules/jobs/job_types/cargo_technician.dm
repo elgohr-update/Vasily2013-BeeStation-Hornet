@@ -18,6 +18,12 @@
 	paycheck_department = ACCOUNT_CAR
 
 	display_order = JOB_DISPLAY_ORDER_CARGO_TECHNICIAN
+	departments = DEPARTMENT_CARGO
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman/cargo
+	)
+	biohazard = 15
 
 /datum/outfit/job/cargo_tech
 	name = "Cargo Technician"
@@ -26,6 +32,6 @@
 	id = /obj/item/card/id/job/cargo
 	belt = /obj/item/pda/cargo
 	ears = /obj/item/radio/headset/headset_cargo
-	uniform = /obj/item/clothing/under/rank/cargotech
+	uniform = /obj/item/clothing/under/rank/cargo/tech
 	l_hand = /obj/item/export_scanner
 

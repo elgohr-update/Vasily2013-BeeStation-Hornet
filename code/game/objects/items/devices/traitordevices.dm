@@ -70,8 +70,8 @@ effective or pretty fucking useless.
 
 /obj/item/healthanalyzer/rad_laser
 	custom_materials = list(/datum/material/iron=400)
-	var/ui_x = 320
-	var/ui_y = 335
+
+
 	var/irradiate = TRUE
 	var/stealth = FALSE
 	var/used = FALSE // is it cooling down?
@@ -87,6 +87,7 @@ effective or pretty fucking useless.
 		log_combat(user, M, "irradiated", src)
 		var/cooldown = get_cooldown()
 		used = TRUE
+		SStgui.update_uis(src) // Update immediately, since it's not spammable
 		icon_state = "health1"
 		handle_cooldown(cooldown) // splits off to handle the cooldown while handling wavelength
 		to_chat(user, "<span class='warning'>Successfully irradiated [M].</span>")
@@ -102,6 +103,7 @@ effective or pretty fucking useless.
 	spawn(cooldown)
 		used = FALSE
 		icon_state = "health"
+		SStgui.update_uis(src) // Update immediately, since it's not spammable
 
 /obj/item/healthanalyzer/rad_laser/proc/get_cooldown()
 	return round(max(10, (stealth*30 + intensity*5 - wavelength/4)))
@@ -112,11 +114,14 @@ effective or pretty fucking useless.
 /obj/item/healthanalyzer/rad_laser/interact(mob/user)
 	ui_interact(user)
 
-/obj/item/healthanalyzer/rad_laser/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.hands_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/item/healthanalyzer/rad_laser/ui_state(mob/user)
+	return GLOB.hands_state
+
+/obj/item/healthanalyzer/rad_laser/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "RadioactiveMicrolaser", "Radioactive Microlaser", ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "RadioactiveMicrolaser")
 		ui.open()
 
 /obj/item/healthanalyzer/rad_laser/ui_data(mob/user)
@@ -198,7 +203,7 @@ effective or pretty fucking useless.
 	actions_types = list(/datum/action/item_action/toggle)
 
 /obj/item/shadowcloak/ui_action_click(mob/user)
-	if(user.get_item_by_slot(ITEM_SLOT_BELT) == src)
+	if(user.get_item_by_slot(slot_flags) == src)
 		if(!on)
 			Activate(usr)
 		else
@@ -206,8 +211,8 @@ effective or pretty fucking useless.
 	return
 
 /obj/item/shadowcloak/item_action_slot_check(slot, mob/user)
-	if(slot == ITEM_SLOT_BELT)
-		return 1
+	if(slot == slot_flags)
+		return TRUE
 
 /obj/item/shadowcloak/proc/Activate(mob/living/carbon/human/user)
 	if(!user)
@@ -228,26 +233,48 @@ effective or pretty fucking useless.
 
 /obj/item/shadowcloak/dropped(mob/user)
 	..()
-	if(user && user.get_item_by_slot(ITEM_SLOT_BELT) != src)
+	if(user && user.get_item_by_slot(slot_flags) != src)
 		Deactivate()
 
-/obj/item/shadowcloak/process()
-	if(user.get_item_by_slot(ITEM_SLOT_BELT) != src)
+/obj/item/shadowcloak/process(delta_time)
+	if(user.get_item_by_slot(slot_flags) != src)
 		Deactivate()
 		return
 	var/turf/T = get_turf(src)
 	if(on)
 		var/lumcount = T.get_lumcount()
 		if(lumcount > 0.3)
-			charge = max(0,charge - 25)//Quick decrease in light
+			charge = max(0, charge - 12.5 * delta_time)//Quick decrease in light
 		else
-			charge = min(max_charge,charge + 50) //Charge in the dark
-		animate(user,alpha = clamp(255 - charge,0,255),time = 10)
+			charge = min(max_charge,charge + 25 * delta_time) //Charge in the dark
+		animate(user,alpha = CLAMP(255 - charge,0,255),time = 10)
 
+/obj/item/shadowcloak/magician
+	name = "magician's cape"
+	desc = "A magician never reveals his secrets."
+	icon = 'icons/obj/bedsheets.dmi'
+	lefthand_file = 'icons/mob/inhands/misc/bedsheet_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/misc/bedsheet_righthand.dmi'
+	icon_state = "sheetmagician"
+	item_state = "sheetmagician"
+	slot_flags = ITEM_SLOT_NECK
+	layer = MOB_LAYER
+	attack_verb = null
+
+/obj/item/shadowcloak/magician/attackby(obj/item/W, mob/user, params)
+	. = ..()
+	if(istype(W, /obj/item/upgradewand))
+		var/obj/item/upgradewand/wand = W
+		if(!wand.used && max_charge == initial(max_charge))
+			wand.used = TRUE
+			charge = 450
+			max_charge = 450
+			to_chat(user, "<span_class='notice'>You upgrade the [src] with the [wand].</span>")
+			playsound(user, 'sound/weapons/emitter2.ogg', 25, 1, -1)
 
 /obj/item/jammer
-	name = "radio jammer"
-	desc = "Device used to disrupt nearby radio communication."
+	name = "signal jammer"
+	desc = "Device used to disrupt nearby wireless communication."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "jammer"
 	var/active = FALSE
@@ -261,3 +288,11 @@ effective or pretty fucking useless.
 	else
 		GLOB.active_jammers -= src
 	update_icon()
+
+/atom/proc/is_jammed()
+	var/turf/position = get_turf(src)
+	for(var/obj/item/jammer/jammer in GLOB.active_jammers)
+		var/turf/jammer_turf = get_turf(jammer)
+		if(position?.get_virtual_z_level() == jammer_turf.get_virtual_z_level() && (get_dist(position, jammer_turf) <= jammer.range))
+			return TRUE
+	return FALSE

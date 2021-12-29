@@ -23,7 +23,7 @@ const VendingRow = (props, context) => {
   return (
     <Table.Row>
       <Table.Cell collapsing>
-        {product.base64 ? (
+        {product.img ? (
           <img
             src={`data:image/jpeg;base64,${product.img}`}
             style={{
@@ -105,7 +105,9 @@ export const Vending = (props, context) => {
     ];
   }
   return (
-    <Window resizable>
+    <Window
+      width={400}
+      height={550}>
       <Window.Content scrollable>
         {!!data.onstation && (
           <Section title="User">

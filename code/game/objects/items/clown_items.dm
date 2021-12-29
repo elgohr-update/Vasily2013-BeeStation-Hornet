@@ -123,7 +123,7 @@
 		user.visible_message("[user] begins to clean \the [target.name] with [src]...", "<span class='notice'>You begin to clean \the [target.name] with [src]...</span>")
 		if(do_after(user, src.cleanspeed, target = target))
 			to_chat(user, "<span class='notice'>You clean \the [target.name].</span>")
-			if(istype(target, /obj/item/clothing) && HAS_TRAIT(target, TRAIT_SPRAYPAINTED))
+			if(isclothing(target) && HAS_TRAIT(target, TRAIT_SPRAYPAINTED))
 				var/obj/item/clothing/C = target
 				var/mob/living/carbon/human/H = user
 				C.flash_protect -= 1
@@ -158,10 +158,15 @@
 	throw_speed = 3
 	throw_range = 7
 	attack_verb = list("HONKED")
+	///sound file given to the squeaky component we make in Initialize() so sub-types can specify their own sound
+	var/sound_file = 'sound/items/bikehorn.ogg'
 
 /obj/item/bikehorn/Initialize()
 	. = ..()
-	AddComponent(/datum/component/squeak, list('sound/items/bikehorn.ogg'=1), 50)
+	var/list/sound_list = list()
+	sound_list[sound_file] = 1
+	//LoadComponent so child types dont stack squeak components
+	LoadComponent(/datum/component/squeak, sound_list, 50)
 
 /obj/item/bikehorn/attack(mob/living/carbon/M, mob/living/carbon/user)
 	SEND_SIGNAL(M, COMSIG_ADD_MOOD_EVENT, "honk", /datum/mood_event/honk)
@@ -177,10 +182,7 @@
 	name = "air horn"
 	desc = "Damn son, where'd you find this?"
 	icon_state = "air_horn"
-
-/obj/item/bikehorn/airhorn/Initialize()
-	. = ..()
-	AddComponent(/datum/component/squeak, list('sound/items/airhorn2.ogg'=1), 50)
+	sound_file = 'sound/items/airhorn2.ogg'
 
 //golden bikehorn
 /obj/item/bikehorn/golden
@@ -201,8 +203,7 @@
 	..()
 
 /obj/item/bikehorn/golden/proc/flip_mobs(mob/living/carbon/M, mob/user)
-	var/turf/T = get_turf(src)
-	for(M in ohearers(7, T))
+	for(M in ohearers(7, get_turf(src)))
 		if(ishuman(M) && M.can_hear())
 			var/mob/living/carbon/human/H = M
 			if(istype(H.ears, /obj/item/clothing/ears/earmuffs))

@@ -28,20 +28,23 @@
 	construction_type = /obj/item/pipe/directional
 	pipe_state = "volumepump"
 
-	ui_x = 335
-	ui_y = 115
+
+
 
 /obj/machinery/atmospherics/components/binary/volume_pump/CtrlClick(mob/user)
 	if(can_interact(user))
 		on = !on
 		update_icon()
+		ui_update()
 	return ..()
 
 /obj/machinery/atmospherics/components/binary/volume_pump/AltClick(mob/user)
 	if(can_interact(user))
 		transfer_rate = MAX_TRANSFER_RATE
+		balloon_alert(user, "Set to [transfer_rate] L/s")
 		update_icon()
-	return ..()
+		ui_update()
+	return
 
 /obj/machinery/atmospherics/components/binary/volume_pump/Destroy()
 	SSradio.remove_object(src,frequency)
@@ -69,19 +72,15 @@
 	if(overclocked && (output_starting_pressure-input_starting_pressure > 1000))//Overclocked pumps can only force gas a certain amount.
 		return
 
-
-	var/transfer_ratio = transfer_rate/air1.volume
-
-	var/datum/gas_mixture/removed = air1.remove_ratio(transfer_ratio)
-
 	if(overclocked)//Some of the gas from the mixture leaks to the environment when overclocked
 		var/turf/open/T = loc
 		if(istype(T))
-			var/datum/gas_mixture/leaked = removed.remove_ratio(VOLUME_PUMP_LEAK_AMOUNT)
+			var/datum/gas_mixture/leaked = air1.remove_ratio(VOLUME_PUMP_LEAK_AMOUNT)
 			T.assume_air(leaked)
 			T.air_update_turf()
 
-	air2.merge(removed)
+	var/transfer_ratio = transfer_rate / air1.return_volume()
+	air1.transfer_ratio_to(air2,transfer_ratio)
 
 	update_parents()
 
@@ -109,11 +108,14 @@
 	))
 	radio_connection.post_signal(src, signal)
 
-/obj/machinery/atmospherics/components/binary/volume_pump/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-																		datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/atmospherics/components/binary/volume_pump/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/atmospherics/components/binary/volume_pump/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "AtmosPump", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "AtmosPump")
 		ui.open()
 
 /obj/machinery/atmospherics/components/binary/volume_pump/ui_data()
@@ -147,7 +149,8 @@
 			if(.)
 				transfer_rate = clamp(rate, 0, MAX_TRANSFER_RATE)
 				investigate_log("was set to [transfer_rate] L/s by [key_name(usr)]", INVESTIGATE_ATMOS)
-	update_icon()
+	if(.)
+		update_icon()
 
 /obj/machinery/atmospherics/components/binary/volume_pump/receive_signal(datum/signal/signal)
 	if(!signal.data["tag"] || (signal.data["tag"] != id) || (signal.data["sigtype"]!="command"))
@@ -163,7 +166,7 @@
 
 	if("set_transfer_rate" in signal.data)
 		var/datum/gas_mixture/air1 = airs[1]
-		transfer_rate = clamp(text2num(signal.data["set_transfer_rate"]),0,air1.volume)
+		transfer_rate = CLAMP(text2num(signal.data["set_transfer_rate"]),0,air1.return_volume())
 
 	if(on != old_on)
 		investigate_log("was turned [on ? "on" : "off"] by a remote signal", INVESTIGATE_ATMOS)
@@ -174,6 +177,7 @@
 
 	broadcast_status()
 	update_icon()
+	ui_update()
 
 /obj/machinery/atmospherics/components/binary/volume_pump/power_change()
 	..()

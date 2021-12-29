@@ -8,8 +8,8 @@
 	custom_materials = list(/datum/material/iron=400, /datum/material/glass=120)
 	wires = WIRE_RECEIVE | WIRE_PULSE | WIRE_RADIO_PULSE | WIRE_RADIO_RECEIVE
 	attachable = TRUE
-	var/ui_x = 280
-	var/ui_y = 132
+
+
 	var/code = DEFAULT_SIGNALER_CODE
 	var/frequency = FREQ_SIGNALER
 	var/datum/radio_frequency/radio_connection
@@ -67,11 +67,14 @@
 		return ..()
 	return UI_CLOSE
 
-/obj/item/assembly/signaler/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.hands_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/item/assembly/signaler/ui_state(mob/user)
+	return GLOB.hands_state
+
+/obj/item/assembly/signaler/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "Signaler", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "Signaler")
 		ui.open()
 
 /obj/item/assembly/signaler/ui_data(mob/user)
@@ -106,7 +109,8 @@
 				code = initial(code)
 			. = TRUE
 
-	update_icon()
+	if(.)
+		update_icon()
 
 /obj/item/assembly/signaler/attackby(obj/item/W, mob/user, params)
 	if(issignaler(W))
@@ -115,6 +119,7 @@
 			code = signaler2.code
 			set_frequency(signaler2.frequency)
 			to_chat(user, "You transfer the frequency and code of \the [signaler2.name] to \the [name]")
+			ui_update()
 	..()
 
 /obj/item/assembly/signaler/proc/signal()
@@ -142,10 +147,7 @@
 		return
 	pulse(TRUE)
 	audible_message("[icon2html(src, hearers(src))] *beep* *beep* *beep*", null, hearing_range)
-	for(var/CHM in get_hearers_in_view(hearing_range, src))
-		if(ismob(CHM))
-			var/mob/LM = CHM
-			LM.playsound_local(get_turf(src), 'sound/machines/triple_beep.ogg', ASSEMBLY_BEEP_VOLUME, TRUE)
+	playsound(get_turf(src), 'sound/machines/triple_beep.ogg', ASSEMBLY_BEEP_VOLUME, TRUE)
 	return TRUE
 
 /obj/item/assembly/signaler/proc/set_frequency(new_frequency)

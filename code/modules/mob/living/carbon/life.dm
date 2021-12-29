@@ -11,11 +11,19 @@
 	if(!IsInStasis())
 
 		//Reagent processing needs to come before breathing, to prevent edge cases.
-		handle_organs()
+		if(stat != DEAD)
+			for(var/V in internal_organs)
+				var/obj/item/organ/O = V
+				O.on_life()
+		else
+			if(reagents && !reagents.has_reagent(/datum/reagent/toxin/formaldehyde, 1)) // No organ decay if the body contains formaldehyde.
+				for(var/V in internal_organs)
+					var/obj/item/organ/O = V
+					O.on_death() //Needed so organs decay while inside the body.
 
 		. = ..()
 
-		if (QDELETED(src))
+		if(QDELETED(src))
 			return
 
 		if(.) //not dead
@@ -27,8 +35,10 @@
 				update_stamina() //needs to go before updatehealth to remove stamcrit
 				updatehealth()
 
-		if(stat != DEAD)
-			handle_brain_damage()
+		if(stat != DEAD) //Handle brain damage
+			for(var/T in get_traumas())
+				var/datum/brain_trauma/BT = T
+				BT.on_life()
 
 	else
 		. = ..()
@@ -37,8 +47,15 @@
 		stop_sound_channel(CHANNEL_HEARTBEAT)
 		LoadComponent(/datum/component/rot/corpse)
 
-	//Updates the number of stored chemicals for powers
-	handle_changeling()
+	//Updates the number of stored chemicals for changeling powers
+	if(hud_used?.lingchemdisplay && !isalien(src) && mind)
+		var/datum/antagonist/changeling/changeling = mind.has_antag_datum(/datum/antagonist/changeling)
+		if(changeling)
+			changeling.regenerate()
+			hud_used.lingchemdisplay.invisibility = 0
+			hud_used.lingchemdisplay.maptext = MAPTEXT("<div align='center' valign='middle' style='position:relative; top:0px; left:6px'><font color='#dd66dd'>[round(changeling.chem_charges)]</font></div>")
+		else
+			hud_used.lingchemdisplay.invisibility = INVISIBILITY_ABSTRACT
 
 	if(stat != DEAD)
 		return 1
@@ -85,7 +102,7 @@
 	var/datum/gas_mixture/breath
 
 	if(!getorganslot(ORGAN_SLOT_BREATHING_TUBE))
-		if(health <= HEALTH_THRESHOLD_FULLCRIT || (pulledby && pulledby.grab_state >= GRAB_KILL) || HAS_TRAIT(src, TRAIT_MAGIC_CHOKE) || lungs.organ_flags & ORGAN_FAILING)
+		if(health <= HEALTH_THRESHOLD_FULLCRIT || (pulledby && pulledby.grab_state >= GRAB_KILL) || HAS_TRAIT(src, TRAIT_MAGIC_CHOKE) || !lungs || lungs.organ_flags & ORGAN_FAILING)
 			losebreath++  //You can't breath at all when in critical or when being choked, so you're going to miss a breath
 
 		else if(health <= crit_threshold)
@@ -110,16 +127,18 @@
 				breath = loc_as_obj.handle_internal_lifeform(src, BREATH_VOLUME)
 
 			else if(isturf(loc)) //Breathe from loc as turf
-				var/breath_moles = 0
+				var/breath_ratio = 0
 				if(environment)
-					breath_moles = environment.total_moles()*BREATH_PERCENTAGE
+					breath_ratio = BREATH_VOLUME/environment.return_volume()
 
-				breath = loc.remove_air(breath_moles)
+				breath = loc.remove_air_ratio(breath_ratio)
 		else //Breathe from loc as obj again
 			if(istype(loc, /obj/))
 				var/obj/loc_as_obj = loc
 				loc_as_obj.handle_internal_lifeform(src,0)
 
+	if(breath)
+		breath.set_volume(BREATH_VOLUME)
 	check_breath(breath)
 
 	if(breath)
@@ -150,7 +169,7 @@
 		adjustOxyLoss(1)
 
 		failed_last_breath = 1
-		throw_alert("not_enough_oxy", /obj/screen/alert/not_enough_oxy)
+		throw_alert("not_enough_oxy", /atom/movable/screen/alert/not_enough_oxy)
 		return 0
 
 	var/safe_oxy_min = 16
@@ -159,13 +178,11 @@
 	var/SA_para_min = 1
 	var/SA_sleep_min = 5
 	var/oxygen_used = 0
-	var/breath_pressure = (breath.total_moles()*R_IDEAL_GAS_EQUATION*breath.temperature)/BREATH_VOLUME
-
-	var/list/breath_gases = breath.gases
-	breath.assert_gases(/datum/gas/oxygen, /datum/gas/plasma, /datum/gas/carbon_dioxide, /datum/gas/nitrous_oxide, /datum/gas/bz)
-	var/O2_partialpressure = (breath_gases[/datum/gas/oxygen][MOLES]/breath.total_moles())*breath_pressure
-	var/Toxins_partialpressure = (breath_gases[/datum/gas/plasma][MOLES]/breath.total_moles())*breath_pressure
-	var/CO2_partialpressure = (breath_gases[/datum/gas/carbon_dioxide][MOLES]/breath.total_moles())*breath_pressure
+	var/moles = breath.total_moles()
+	var/breath_pressure = (moles*R_IDEAL_GAS_EQUATION*breath.return_temperature())/BREATH_VOLUME
+	var/O2_partialpressure = ((breath.get_moles(GAS_O2)/moles)*breath_pressure) + (((breath.get_moles(GAS_PLUOXIUM)*8)/moles)*breath_pressure)
+	var/Toxins_partialpressure = (breath.get_moles(GAS_PLASMA)/moles)*breath_pressure
+	var/CO2_partialpressure = (breath.get_moles(GAS_CO2)/moles)*breath_pressure
 
 
 	//OXYGEN
@@ -176,21 +193,21 @@
 			var/ratio = 1 - O2_partialpressure/safe_oxy_min
 			adjustOxyLoss(min(5*ratio, 3))
 			failed_last_breath = 1
-			oxygen_used = breath_gases[/datum/gas/oxygen][MOLES]*ratio
+			oxygen_used = breath.get_moles(GAS_O2)*ratio
 		else
 			adjustOxyLoss(3)
 			failed_last_breath = 1
-		throw_alert("not_enough_oxy", /obj/screen/alert/not_enough_oxy)
+		throw_alert("not_enough_oxy", /atom/movable/screen/alert/not_enough_oxy)
 
 	else //Enough oxygen
 		failed_last_breath = 0
 		if(health >= crit_threshold)
 			adjustOxyLoss(-5)
-		oxygen_used = breath_gases[/datum/gas/oxygen][MOLES]
+		oxygen_used = breath.get_moles(GAS_O2)
 		clear_alert("not_enough_oxy")
 
-	breath_gases[/datum/gas/oxygen][MOLES] -= oxygen_used
-	breath_gases[/datum/gas/carbon_dioxide][MOLES] += oxygen_used
+	breath.adjust_moles(GAS_O2, -oxygen_used)
+	breath.adjust_moles(GAS_CO2, oxygen_used)
 
 	//CARBON DIOXIDE
 	if(CO2_partialpressure > safe_co2_max)
@@ -209,15 +226,15 @@
 
 	//TOXINS/PLASMA
 	if(Toxins_partialpressure > safe_tox_max)
-		var/ratio = (breath_gases[/datum/gas/plasma][MOLES]/safe_tox_max) * 10
+		var/ratio = (breath.get_moles(GAS_PLASMA)/safe_tox_max) * 10
 		adjustToxLoss(CLAMP(ratio, MIN_TOXIC_GAS_DAMAGE, MAX_TOXIC_GAS_DAMAGE))
-		throw_alert("too_much_tox", /obj/screen/alert/too_much_tox)
+		throw_alert("too_much_tox", /atom/movable/screen/alert/too_much_tox)
 	else
 		clear_alert("too_much_tox")
 
 	//NITROUS OXIDE
-	if(breath_gases[/datum/gas/nitrous_oxide])
-		var/SA_partialpressure = (breath_gases[/datum/gas/nitrous_oxide][MOLES]/breath.total_moles())*breath_pressure
+	if(breath.get_moles(GAS_NITROUS))
+		var/SA_partialpressure = (breath.get_moles(GAS_NITROUS)/breath.total_moles())*breath_pressure
 		if(SA_partialpressure > SA_para_min)
 			Unconscious(60)
 			if(SA_partialpressure > SA_sleep_min)
@@ -230,26 +247,26 @@
 		SEND_SIGNAL(src, COMSIG_CLEAR_MOOD_EVENT, "chemical_euphoria")
 
 	//BZ (Facepunch port of their Agent B)
-	if(breath_gases[/datum/gas/bz])
-		var/bz_partialpressure = (breath_gases[/datum/gas/bz][MOLES]/breath.total_moles())*breath_pressure
+	if(breath.get_moles(GAS_BZ))
+		var/bz_partialpressure = (breath.get_moles(GAS_BZ)/breath.total_moles())*breath_pressure
 		if(bz_partialpressure > 1)
 			hallucination += 10
 		else if(bz_partialpressure > 0.01)
 			hallucination += 5
 
 	//TRITIUM
-	if(breath_gases[/datum/gas/tritium])
-		var/tritium_partialpressure = (breath_gases[/datum/gas/tritium][MOLES]/breath.total_moles())*breath_pressure
+	if(breath.get_moles(GAS_TRITIUM))
+		var/tritium_partialpressure = (breath.get_moles(GAS_TRITIUM)/breath.total_moles())*breath_pressure
 		radiation += tritium_partialpressure/10
 
 	//NITRYL
-	if(breath_gases[/datum/gas/nitryl])
-		var/nitryl_partialpressure = (breath_gases[/datum/gas/nitryl][MOLES]/breath.total_moles())*breath_pressure
+	if(breath.get_moles(GAS_NITRYL))
+		var/nitryl_partialpressure = (breath.get_moles(GAS_NITRYL)/breath.total_moles())*breath_pressure
 		adjustFireLoss(nitryl_partialpressure/4)
 
 	//MIASMA
-	if(breath_gases[/datum/gas/miasma])
-		var/miasma_partialpressure = (breath_gases[/datum/gas/miasma][MOLES]/breath.total_moles())*breath_pressure
+	if(breath.get_moles(GAS_MIASMA))
+		var/miasma_partialpressure = (breath.get_moles(GAS_MIASMA)/breath.total_moles())*breath_pressure
 
 		if(prob(1 * miasma_partialpressure))
 			var/datum/disease/advance/miasma_disease = new /datum/disease/advance/random(2,3)
@@ -289,10 +306,6 @@
 		SEND_SIGNAL(src, COMSIG_CLEAR_MOOD_EVENT, "smell")
 
 
-
-
-	breath.garbage_collect()
-
 	//BREATH TEMPERATURE
 	handle_breath_temperature(breath)
 
@@ -304,7 +317,7 @@
 
 /mob/living/carbon/proc/get_breath_from_internal(volume_needed)
 	if(internal)
-		if(internal.loc != src)
+		if(internal.loc != src && !(wear_mask.clothing_flags & MASKEXTENDRANGE)) // If the mask has extended range, do not check for internal.loc
 			internal = null
 			update_internals_hud_icon(0)
 		else if ((!wear_mask || !(wear_mask.clothing_flags & MASKINTERNALS)) && !getorganslot(ORGAN_SLOT_BREATHING_TUBE))
@@ -325,22 +338,25 @@
 		stam_regen = TRUE
 		if(stam_paralyzed)
 			. |= BODYPART_LIFE_UPDATE_HEALTH //make sure we remove the stamcrit
-	for(var/I in bodyparts)
-		var/obj/item/bodypart/BP = I
+	var/bodyparts_with_stam = 0
+	var/stam_heal_multiplier = 1
+	var/total_stamina_loss = 0	//Quicker to put it here too than do it again with getStaminaLoss
+	var/force_heal = 0
+	//Find how many bodyparts we have with stamina damage
+	if(stam_regen)
+		for(var/obj/item/bodypart/BP as anything in bodyparts)
+			if(BP.stamina_dam > DAMAGE_PRECISION)
+				bodyparts_with_stam ++
+				total_stamina_loss += BP.stamina_dam * BP.stam_damage_coeff
+		//Force bodyparts to heal if we have more than 120 stamina damage (6 seconds)
+		force_heal = max(0, total_stamina_loss - 120) / max(bodyparts_with_stam, 1)
+	//Increase damage the more stam damage
+	//Incraesed stamina healing when above 50 stamloss, up to 2x healing rate when at 100 stamloss.
+	stam_heal_multiplier = CLAMP(total_stamina_loss / 50, 1, 2)
+	//Heal bodypart stamina damage
+	for(var/obj/item/bodypart/BP as() in bodyparts)
 		if(BP.needs_processing)
-			. |= BP.on_life(stam_regen)
-
-/mob/living/carbon/proc/handle_organs()
-	if(stat != DEAD)
-		for(var/V in internal_organs)
-			var/obj/item/organ/O = V
-			O.on_life()
-	else
-		if(reagents.has_reagent(/datum/reagent/toxin/formaldehyde, 1)) // No organ decay if the body contains formaldehyde.
-			return
-		for(var/V in internal_organs)
-			var/obj/item/organ/O = V
-			O.on_death() //Needed so organs decay while inside the body.
+			. |= BP.on_life(force_heal + ((stam_regen * stam_heal * stam_heal_multiplier) / max(bodyparts_with_stam, 1)))
 
 /mob/living/carbon/handle_diseases()
 	for(var/thing in diseases)
@@ -350,18 +366,6 @@
 
 		if(stat != DEAD || D.process_dead)
 			D.stage_act()
-
-//todo generalize this and move hud out
-/mob/living/carbon/proc/handle_changeling()
-	if(mind && hud_used && hud_used.lingchemdisplay)
-		var/datum/antagonist/changeling/changeling = mind.has_antag_datum(/datum/antagonist/changeling)
-		if(changeling)
-			changeling.regenerate()
-			hud_used.lingchemdisplay.invisibility = 0
-			hud_used.lingchemdisplay.maptext = "<div align='center' valign='middle' style='position:relative; top:0px; left:6px'><font color='#dd66dd'>[round(changeling.chem_charges)]</font></div>"
-		else
-			hud_used.lingchemdisplay.invisibility = INVISIBILITY_ABSTRACT
-
 
 /mob/living/carbon/handle_mutations_and_radiation()
 	if(dna && dna.temporary_mutations.len)
@@ -492,6 +496,9 @@ GLOBAL_LIST_INIT(ballmer_windows_me_msg, list("Yo man, what if, we like, uh, put
 	if(cultslurring)
 		cultslurring = max(cultslurring-1, 0)
 
+	if(clockslurring)
+		clockslurring = max(clockslurring-1, 0)
+
 	if(silent)
 		silent = max(silent-1, 0)
 
@@ -513,6 +520,7 @@ GLOBAL_LIST_INIT(ballmer_windows_me_msg, list("Yo man, what if, we like, uh, put
 				adjustFireLoss(-0.06, FALSE)
 		else
 			SEND_SIGNAL(src, COMSIG_CLEAR_MOOD_EVENT, "drunk")
+			sound_environment_override = SOUND_ENVIRONMENT_NONE
 
 		if(drunkenness >= 11 && slurring < 5)
 			slurring += 1.2
@@ -561,16 +569,16 @@ GLOBAL_LIST_INIT(ballmer_windows_me_msg, list("Yo man, what if, we like, uh, put
 		if(drunkenness >= 81)
 			adjustToxLoss(1)
 			if(prob(5) && !stat)
-				to_chat(src, "<span class='warning'>Maybe you should lie down for a bit...</span>")
+				to_chat(src, "<span class='warning'>Maybe you should lie down for a bit.</span>")
 
 		if(drunkenness >= 91)
 			adjustToxLoss(1)
 			adjustOrganLoss(ORGAN_SLOT_BRAIN, 0.4)
 			if(prob(20) && !stat)
 				if(SSshuttle.emergency.mode == SHUTTLE_DOCKED && is_station_level(z)) //QoL mainly
-					to_chat(src, "<span class='warning'>You're so tired... but you can't miss that shuttle...</span>")
+					to_chat(src, "<span class='warning'>You're so tired, but you can't miss that shuttle.</span>")
 				else
-					to_chat(src, "<span class='warning'>Just a quick nap...</span>")
+					to_chat(src, "<span class='warning'>Just a quick nap.</span>")
 					Sleeping(900)
 
 		if(drunkenness >= 101)
@@ -614,16 +622,6 @@ GLOBAL_LIST_INIT(ballmer_windows_me_msg, list("Yo man, what if, we like, uh, put
 	adjustToxLoss(4, TRUE,  TRUE)
 	if(prob(30))
 		to_chat(src, "<span class='warning'>You feel a stabbing pain in your abdomen!</span>")
-
-
-////////////////
-//BRAIN DAMAGE//
-////////////////
-
-/mob/living/carbon/proc/handle_brain_damage()
-	for(var/T in get_traumas())
-		var/datum/brain_trauma/BT = T
-		BT.on_life()
 
 /////////////////////////////////////
 //MONKEYS WITH TOO MUCH CHOLOESTROL//

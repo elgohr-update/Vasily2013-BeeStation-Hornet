@@ -1,3 +1,9 @@
+/**
+ * @file
+ * @copyright 2020 Aleksej Komarov
+ * @license MIT
+ */
+
 // UI states, which are mirrored from the BYOND code.
 export const UI_INTERACTIVE = 2;
 export const UI_UPDATE = 1;
@@ -78,6 +84,11 @@ export const RADIO_CHANNELS = [
     name: 'Service',
     freq: 1349,
     color: '#6ca729',
+  },
+  {
+    name: 'Exploration',
+    freq: 1361,
+    color: '#7ed4c2',
   },
   {
     name: 'Science',

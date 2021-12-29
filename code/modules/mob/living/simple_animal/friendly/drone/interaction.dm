@@ -104,7 +104,7 @@
 	var/armorval = 0
 
 	if(head)
-		armorval = head.armor.getRating(type)
+		armorval = head.get_armor_rating(type, src)
 	return (armorval * get_armor_effectiveness()) //armor is reduced for tiny fragile drones
 
 /mob/living/simple_animal/drone/proc/get_armor_effectiveness()
@@ -150,8 +150,6 @@
 		mind.special_role = null
 		ventcrawler = initial(ventcrawler)
 		speed = initial(speed)
-		if(is_servant_of_ratvar(src))
-			remove_servant_of_ratvar(src, TRUE)
 		message_admins("[ADMIN_LOOKUPFLW(src)], a hacked drone, was restored to factory defaults!")
 	update_drone_icon()
 

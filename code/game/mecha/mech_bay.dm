@@ -56,6 +56,7 @@
 		recharging_mech = locate(/obj/mecha) in recharging_turf
 		if(recharging_mech)
 			recharge_console.update_icon()
+			recharge_console.ui_update()
 	if(recharging_mech && recharging_mech.cell)
 		if(recharging_mech.cell.charge < recharging_mech.cell.maxcharge)
 			var/delta = min(max_charge, recharging_mech.cell.maxcharge - recharging_mech.cell.charge)
@@ -66,6 +67,7 @@
 		if(recharging_mech.loc != recharging_turf)
 			recharging_mech = null
 			recharge_console.update_icon()
+			recharge_console.ui_update()
 
 
 /obj/machinery/mech_bay_recharge_port/attackby(obj/item/I, mob/user, params)
@@ -86,15 +88,25 @@
 	icon_screen = "recharge_comp"
 	icon_keyboard = "rd_key"
 	circuit = /obj/item/circuitboard/computer/mech_bay_power_console
-	ui_x = 400
-	ui_y = 200
+
+
 	var/obj/machinery/mech_bay_recharge_port/recharge_port
 	light_color = LIGHT_COLOR_PINK
 
-/obj/machinery/computer/mech_bay_power_console/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	var/had_mech = FALSE //Keep track of whether we had a mech last update
+
+/obj/machinery/computer/mech_bay_power_console/ui_requires_update(mob/user, datum/tgui/ui)
+	. = ..()
+	if(recharge_port?.recharging_mech) //Update while there's a mech connected
+		. = TRUE
+
+/obj/machinery/computer/mech_bay_power_console/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/computer/mech_bay_power_console/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "MechBayPowerConsole", "Mech Bay Power Control Console", ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "MechBayPowerConsole")
 		ui.open()
 
 /obj/machinery/computer/mech_bay_power_console/ui_act(action, params)

@@ -17,7 +17,7 @@ GLOBAL_LIST_EMPTY(announcement_systems)
 	circuit = /obj/item/circuitboard/machine/announcement_system
 
 	var/obj/item/radio/headset/radio
-	var/arrival = "%PERSON has signed up as %RANK"
+	var/arrival = "%PERSON has signed up as %RANK."
 	var/arrivalToggle = 1
 	var/newhead = "%PERSON, %RANK, is the department head."
 	var/newheadToggle = 1
@@ -93,21 +93,25 @@ GLOBAL_LIST_EMPTY(announcement_systems)
 	else if(message_type == "CRYOSTORAGE")
 		message = CompileText("%PERSON, %RANK has been moved to cryo storage.", user, rank)
 	else if(message_type == "ARRIVALS_BROKEN")
-		message = "The arrivals shuttle has been damaged. Docking for repairs..."
+		message = "The arrivals shuttle has been damaged. Docking for repairs."
 
 	if(channels.len == 0)
-		radio.talk_into(src, message, null, list(SPAN_ROBOT), get_default_language())
+		radio.talk_into(src, message, null)
 	else
 		for(var/channel in channels)
-			radio.talk_into(src, message, channel, list(SPAN_ROBOT), get_default_language())
+			radio.talk_into(src, message, channel)
 
 //config stuff
 
-/obj/machinery/announcement_system/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+
+/obj/machinery/announcement_system/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/announcement_system/ui_interact(mob/user, datum/tgui/ui)
 	. = ..()
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "AutomatedAnnouncement", "Automated Announcement System", 500, 225, master_ui, state)
+		ui = new(user, src, "AutomatedAnnouncement")
 		ui.open()
 
 /obj/machinery/announcement_system/ui_data()
@@ -136,6 +140,7 @@ GLOBAL_LIST_EMPTY(announcement_systems)
 			if(NewMessage)
 				arrival = NewMessage
 				log_game("The arrivals announcement was updated: [NewMessage] by:[key_name(usr)]")
+				. = TRUE
 		if("NewheadText")
 			var/NewMessage = trim(html_encode(param["newText"]), MAX_MESSAGE_LEN)
 			if(!usr.canUseTopic(src, !issilicon(usr)))
@@ -143,13 +148,15 @@ GLOBAL_LIST_EMPTY(announcement_systems)
 			if(NewMessage)
 				newhead = NewMessage
 				log_game("The head announcement was updated: [NewMessage] by:[key_name(usr)]")
+				. = TRUE
 		if("NewheadToggle")
 			newheadToggle = !newheadToggle
 			update_icon()
+			. = TRUE
 		if("ArrivalToggle")
 			arrivalToggle = !arrivalToggle
 			update_icon()
-	add_fingerprint(usr)
+			. = TRUE
 
 /obj/machinery/announcement_system/attack_robot(mob/living/silicon/user)
 	. = attack_ai(user)
@@ -168,6 +175,7 @@ GLOBAL_LIST_EMPTY(announcement_systems)
 
 	arrival = pick("#!@%ERR-34%2 CANNOT LOCAT@# JO# F*LE!", "CRITICAL ERROR 99.", "ERR)#: DA#AB@#E NOT F(*ND!")
 	newhead = pick("OV#RL()D: \[UNKNOWN??\] DET*#CT)D!", "ER)#R - B*@ TEXT F*O(ND!", "AAS.exe is not responding. NanoOS is searching for a solution to the problem.")
+	ui_update()
 
 /obj/machinery/announcement_system/emp_act(severity)
 	. = ..()

@@ -90,7 +90,7 @@
 			brainmob.stored_dna = new /datum/dna/stored(brainmob)
 		C.dna.copy_dna(brainmob.stored_dna)
 		if(HAS_TRAIT(L, TRAIT_BADDNA))
-			brainmob.status_traits[TRAIT_BADDNA] = L.status_traits[TRAIT_BADDNA]
+			LAZYSET(brainmob.status_traits, TRAIT_BADDNA, L.status_traits[TRAIT_BADDNA])
 		var/obj/item/organ/zombie_infection/ZI = L.getorganslot(ORGAN_SLOT_ZOMBIE)
 		if(ZI)
 			brainmob.set_species(ZI.old_species)	//For if the brain is cloned
@@ -126,7 +126,7 @@
 
 	if(brainmob) //if we aren't trying to heal the brain, pass the attack onto the brainmob.
 		O.attack(brainmob, user) //Oh noooeeeee
-    
+
   if(O.force != 0 && !(O.item_flags & NOBLUDGEON))
 	  setOrganDamage(maxHealth) //fails the brain as the brain was attacked, they're pretty fragile.
 
@@ -156,52 +156,18 @@
 		else
 			. += "<span class='info'>This one is completely devoid of life.</span>"
 
-/obj/item/organ/brain/attack(mob/living/carbon/C, mob/user)
-	if(!istype(C))
-		return ..()
-
-	add_fingerprint(user)
-
-	if(user.zone_selected != BODY_ZONE_HEAD)
-		return ..()
-
-	var/target_has_brain = C.getorgan(/obj/item/organ/brain)
-
-	if(!target_has_brain && C.is_eyes_covered())
-		to_chat(user, "<span class='warning'>You're going to need to remove [C.p_their()] head cover first!</span>")
-		return
-
-//since these people will be dead M != usr
-
-	if(!target_has_brain)
-		if(!C.get_bodypart(BODY_ZONE_HEAD) || !user.temporarilyRemoveItemFromInventory(src))
-			return
-		var/msg = "[C] has [src] inserted into [C.p_their()] head by [user]."
-		if(C == user)
-			msg = "[user] inserts [src] into [user.p_their()] head!"
-
-		C.visible_message("<span class='danger'>[msg]</span>",
-						"<span class='userdanger'>[msg]</span>")
-
-		if(C != user)
-			to_chat(C, "<span class='notice'>[user] inserts [src] into your head.</span>")
-			to_chat(user, "<span class='notice'>You insert [src] into [C]'s head.</span>")
-		else
-			to_chat(user, "<span class='notice'>You insert [src] into your head.</span>"	)
-
-		Insert(C)
-	else
-		..()
-
 /obj/item/organ/brain/Destroy() //copypasted from MMIs.
 	if(brainmob)
 		QDEL_NULL(brainmob)
 	QDEL_LIST(traumas)
+
+	if(owner?.mind) //You aren't allowed to return to brains that don't exist
+		owner.mind.set_current(null)
 	return ..()
 
 /obj/item/organ/brain/on_life()
 	if(damage >= BRAIN_DAMAGE_DEATH) //rip
-		to_chat(owner, "<span class='userdanger'>The last spark of life in your brain fizzles out...</span>")
+		to_chat(owner, "<span class='userdanger'>The last spark of life in your brain fizzles out.</span>")
 		owner.death()
 		brain_death = TRUE
 
@@ -229,7 +195,7 @@
 			else if(prev_damage < BRAIN_DAMAGE_SEVERE && damage >= BRAIN_DAMAGE_SEVERE)
 				brain_message = "<span class='warning'>You feel less in control of your thoughts.</span>"
 			else if(prev_damage < (BRAIN_DAMAGE_DEATH - 20) && damage >= (BRAIN_DAMAGE_DEATH - 20))
-				brain_message = "<span class='warning'>You can feel your mind flickering on and off...</span>"
+				brain_message = "<span class='warning'>You can feel your mind flickering on and off.</span>"
 
 			if(.)
 				. += "\n[brain_message]"
@@ -243,25 +209,22 @@
 
 /obj/item/organ/brain/positron
 	name = "positronic brain"
-	slot = "brain"
-	zone = "chest"
+	slot = ORGAN_SLOT_BRAIN
+	zone = BODY_ZONE_CHEST
 	status = ORGAN_ROBOTIC
-	desc = "A cube of shining metal, four inches to a side and covered in shallow grooves. It has an IPC serial number engraved on the top."
+	desc = "A cube of shining metal, four inches to a side and covered in shallow grooves. It has an IPC serial number engraved on the top. In order for this Posibrain to be used as a newly built Positronic Brain, it must be coupled with an MMI."
 	icon = 'icons/obj/assemblies.dmi'
-	icon_state = "posibrain-occupied"
+	icon_state = "posibrain-ipc"
 	organ_flags = ORGAN_SYNTHETIC
 
-/obj/item/organ/brain/positron/Insert(mob/living/carbon/C, special = 0, no_id_transfer = FALSE)
-	owner = C
-	C.internal_organs |= src
-	C.internal_organs_slot[slot] = src
-	loc = null
-
+/obj/item/organ/brain/positron/Insert(mob/living/carbon/C, special = 0, drop_if_replaced = 0)
+	..()
 	if(ishuman(C))
 		var/mob/living/carbon/human/H = C
-		if(H.dna && H.dna.species && (REVIVESBYHEALING in H.dna.species.species_traits))
-			if(H.health > 0 && !H.hellbound)
-				H.revive(0)
+		if(H.dna?.species)
+			if(REVIVESBYHEALING in H.dna.species.species_traits)
+				if(H.health > 0 && !H.hellbound)
+					H.revive(0)
 
 /obj/item/organ/brain/positron/emp_act(severity)
 	switch(severity)
@@ -270,7 +233,7 @@
 			to_chat(owner, "<span class='warning'>Alert: Posibrain heavily damaged.</span>")
 		if(2)
 			owner.adjustOrganLoss(ORGAN_SLOT_BRAIN, 25)
-			to_chat(owner, "<span class='warning'>Alert: Posibrain damaged.</span>") 
+			to_chat(owner, "<span class='warning'>Alert: Posibrain damaged.</span>")
 
 ////////////////////////////////////TRAUMAS////////////////////////////////////////
 
@@ -344,6 +307,9 @@
 	if(actual_trauma.brain) //we don't accept used traumas here
 		WARNING("gain_trauma was given an already active trauma.")
 		return
+	if(QDELETED(actual_trauma)) // hypnosis might qdel on New, causing problems
+		stack_trace("brain_gain_trauma tried to add qdeleted trauma.")
+		return
 
 	traumas += actual_trauma
 	actual_trauma.brain = src
@@ -379,3 +345,4 @@
 	var/list/traumas = get_traumas_type(resilience = resilience)
 	for(var/X in traumas)
 		qdel(X)
+

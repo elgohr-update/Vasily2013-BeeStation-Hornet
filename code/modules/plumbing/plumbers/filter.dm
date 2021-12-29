@@ -13,17 +13,21 @@
 	///whitelist of chems but their name instead of path
 	var/list/english_right = list()
 
-	ui_x = 500
-	ui_y = 300
+
+
 
 /obj/machinery/plumbing/filter/Initialize(mapload, bolt)
 	. = ..()
 	AddComponent(/datum/component/plumbing/filter, bolt)
 
-/obj/machinery/plumbing/filter/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/plumbing/filter/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/plumbing/filter/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "ChemFilter", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "ChemFilter")
 		ui.open()
 
 /obj/machinery/plumbing/filter/ui_data(mob/user)
@@ -35,7 +39,6 @@
 /obj/machinery/plumbing/filter/ui_act(action, params)
 	if(..())
 		return
-	. = TRUE
 	switch(action)
 		if("add")
 			var/new_chem_name = params["name"]
@@ -46,10 +49,12 @@
 						if(!left.Find(chem_id))
 							english_left += new_chem_name
 							left += chem_id
+							. = TRUE
 					if("right")
 						if(!right.Find(chem_id))
 							english_right += new_chem_name
 							right += chem_id
+							. = TRUE
 			else
 				to_chat(usr, "<span class='warning'>No such known reagent exists!</span>")
 
@@ -61,9 +66,9 @@
 					if(english_left.Find(chem_name))
 						english_left -= chem_name
 						left -= chem_id
+						. = TRUE
 				if("right")
 					if(english_right.Find(chem_name))
 						english_right -= chem_name
 						right -= chem_id
-
-
+						. = TRUE

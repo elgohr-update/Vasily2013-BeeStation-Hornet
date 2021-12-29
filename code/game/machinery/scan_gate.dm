@@ -26,14 +26,14 @@
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 50
 	circuit = /obj/item/circuitboard/machine/scanner_gate
-	ui_x = 400
-	ui_y = 300
+
+
 
 	var/scanline_timer
 	var/next_beep = 0 //avoids spam
 	var/locked = FALSE
 	var/scangate_mode = SCANGATE_NONE
-	var/disease_threshold = DISEASE_SEVERITY_MINOR
+	var/disease_threshold = DISEASE_MINOR
 	var/nanite_cloud = 1
 	var/detect_species = SCANGATE_HUMAN
 	var/reverse = FALSE //If true, signals if the scan returns false
@@ -42,6 +42,10 @@
 /obj/machinery/scanner_gate/Initialize()
 	. = ..()
 	set_scanline("passive")
+	var/static/list/loc_connections = list(
+		COMSIG_ATOM_ENTERED = .proc/on_entered,
+	)
+	AddElement(/datum/element/connect_loc, loc_connections)
 
 /obj/machinery/scanner_gate/examine(mob/user)
 	. = ..()
@@ -50,9 +54,10 @@
 	else
 		. += "<span class='notice'>The control panel is unlocked. Swipe an ID to lock it.</span>"
 
-/obj/machinery/scanner_gate/Crossed(atom/movable/AM)
-	. = ..()
-	auto_scan(AM)
+/obj/machinery/scanner_gate/proc/on_entered(datum/source, atom/movable/AM)
+	SIGNAL_HANDLER
+
+	INVOKE_ASYNC(src, .proc/auto_scan, AM)
 
 /obj/machinery/scanner_gate/proc/auto_scan(atom/movable/AM)
 	if(!(stat & (BROKEN|NOPOWER)) && isliving(AM))
@@ -73,11 +78,15 @@
 				locked = FALSE
 				req_access = list()
 				to_chat(user, "<span class='notice'>You unlock [src].</span>")
+				//Update to viewers
+				ui_update()
 		else if(!(obj_flags & EMAGGED))
 			to_chat(user, "<span class='notice'>You lock [src] with [W].</span>")
 			var/list/access = W.GetAccess()
 			req_access = access
 			locked = TRUE
+			//Update to viewers
+			ui_update()
 		else
 			to_chat(user, "<span class='warning'>You try to lock [src] with [W], but nothing happens.</span>")
 	else
@@ -90,6 +99,8 @@
 	req_access = list()
 	obj_flags |= EMAGGED
 	to_chat(user, "<span class='notice'>You fry the ID checking system.</span>")
+	//Update to viewers
+	ui_update()
 
 /obj/machinery/scanner_gate/proc/perform_scan(mob/living/M)
 	var/beep = FALSE
@@ -117,7 +128,7 @@
 		if(SCANGATE_DISEASE)
 			if(iscarbon(M))
 				var/mob/living/carbon/C = M
-				if(get_disease_severity_value(C.check_virus()) >= get_disease_severity_value(disease_threshold))
+				if(get_disease_danger_value(C.check_virus()) >= get_disease_danger_value(disease_threshold))
 					beep = TRUE
 		if(SCANGATE_SPECIES)
 			if(ishuman(M))
@@ -180,11 +191,14 @@
 		return FALSE
 	return ..()
 
-/obj/machinery/scanner_gate/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-										datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/scanner_gate/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/scanner_gate/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "ScannerGate", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "ScannerGate")
 		ui.open()
 
 /obj/machinery/scanner_gate/ui_data()

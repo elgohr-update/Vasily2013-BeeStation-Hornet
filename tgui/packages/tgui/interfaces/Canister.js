@@ -1,5 +1,4 @@
 import { toFixed } from 'common/math';
-import { Fragment } from 'inferno';
 import { useBackend } from '../backend';
 import { AnimatedNumber, Box, Button, Icon, Knob, LabeledControls, LabeledList, Section, Tooltip } from '../components';
 import { formatSiUnit } from '../format';
@@ -21,12 +20,14 @@ export const Canister = (props, context) => {
     restricted,
   } = data;
   return (
-    <Window>
+    <Window
+      width={300}
+      height={232}>
       <Window.Content>
         <Section
           title="Canister"
           buttons={(
-            <Fragment>
+            <>
               {!!isPrototype && (
                 <Button
                   mr={1}
@@ -41,7 +42,7 @@ export const Canister = (props, context) => {
                 icon="pencil-alt"
                 content="Relabel"
                 onClick={() => act('relabel')} />
-            </Fragment>
+            </>
           )}>
           <LabeledControls>
             <LabeledControls.Item
@@ -110,15 +111,18 @@ export const Canister = (props, context) => {
               mr={1}
               label="Port">
               <Box position="relative">
-                <Icon
-                  size={1.25}
-                  name={portConnected ? 'plug' : 'times'}
-                  color={portConnected ? 'good' : 'bad'} />
                 <Tooltip
                   content={portConnected
                     ? 'Connected'
                     : 'Disconnected'}
-                  position="top" />
+                  position="top">
+                  <Box position="relative">
+                    <Icon
+                      size={1.25}
+                      name={portConnected ? 'plug' : 'times'}
+                      color={portConnected ? 'good' : 'bad'} />
+                  </Box>
+                </Tooltip>
               </Box>
             </LabeledControls.Item>
           </LabeledControls>

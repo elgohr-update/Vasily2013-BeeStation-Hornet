@@ -5,6 +5,7 @@
 	slices_num = 5
 	tastes = list("bread" = 10)
 	foodtype = GRAIN
+	dunkable = TRUE
 	var/mutated = 0
 
 /obj/item/reagent_containers/food/snacks/store/bread/teleport_act()
@@ -13,7 +14,7 @@
 	if(mutated == 5)
 		new /mob/living/simple_animal/hostile/breadloaf(src.loc)
 		qdel(src)
-	
+
 
 
 /obj/item/reagent_containers/food/snacks/breadslice
@@ -25,6 +26,7 @@
 	slot_flags = ITEM_SLOT_HEAD
 	customfoodfilling = 0 //to avoid infinite bread-ception
 	foodtype = GRAIN
+	dunkable = TRUE
 	var/mutated = 0
 
 /obj/item/reagent_containers/food/snacks/breadslice/teleport_act()
@@ -197,6 +199,14 @@
 	tastes = list("bread" = 1)
 	foodtype = GRAIN
 
+/obj/item/reagent_containers/food/snacks/baguette/mime
+	name = "French Baguette"
+	desc = "It would be a shame if it was consumed by someone unworthy..."
+	bonus_reagents = list(/datum/reagent/consumable/nutriment = 2, /datum/reagent/consumable/nutriment/vitamin = 2, /datum/reagent/consumable/nothing = 1)
+	list_reagents = list(/datum/reagent/consumable/nutriment = 6, /datum/reagent/consumable/nutriment/vitamin = 1, /datum/reagent/consumable/nothing = 2)
+	bitesize = -1
+
+
 /obj/item/reagent_containers/food/snacks/garlicbread
 	name = "garlic bread"
 	desc = "Alas, it is limited."
@@ -235,20 +245,25 @@
 	item_flags = fried.item_flags
 	obj_flags = fried.obj_flags
 
+	RegisterSignal(src, COMSIG_COMPONENT_CLEAN_ACT, .proc/clean_batter)
+
 	if(istype(fried, /obj/item/reagent_containers/food/snacks))
 		fried.reagents.trans_to(src, fried.reagents.total_volume)
 		qdel(fried)
 	else
 		fried.forceMove(src)
-	
+
+/obj/item/reagent_containers/food/snacks/deepfryholder/proc/clean_batter()
+	qdel(src)
+
 /obj/item/reagent_containers/food/snacks/deepfryholder/Destroy()
-	if(contents)
-		QDEL_LIST(contents)
+	UnregisterSignal(src, COMSIG_COMPONENT_CLEAN_ACT)
 	. = ..()
 
 /obj/item/reagent_containers/food/snacks/deepfryholder/On_Consume(mob/living/eater)
 	if(contents)
-		QDEL_LIST(contents)
+		for(var/atom/movable/A in contents)
+			A.forceMove(eater.loc)
 	..()
 
 /obj/item/reagent_containers/food/snacks/deepfryholder/proc/fry(cook_time = 30)
@@ -267,21 +282,10 @@
 			desc = "[desc] Deep-fried to perfection."
 		if(60 to INFINITY)
 			add_atom_colour(rgb(33,19,9), FIXED_COLOUR_PRIORITY)
-			name = "the physical manifestation of the very concept of fried foods"
+			name = "\proper the physical manifestation of the very concept of fried foods"
 			desc = "A heavily-fried...something.  Who can tell anymore?"
 	filling_color = color
 	foodtype |= FRIED
-
-/obj/item/reagent_containers/food/snacks/butteredtoast
-	name = "buttered toast"
-	desc = "Butter lightly spread over a piece of toast."
-	icon = 'icons/obj/food/food.dmi'
-	icon_state = "butteredtoast"
-	bitesize = 3
-	filling_color = "#FFA500"
-	list_reagents = list(/datum/reagent/consumable/nutriment = 4)
-	bonus_reagents = list(/datum/reagent/consumable/nutriment = 1, /datum/reagent/consumable/nutriment/vitamin = 1)
-	tastes = list("butter" = 1, "toast" = 1)
 
 /obj/item/reagent_containers/food/snacks/butterbiscuit
 	name = "butter biscuit"
@@ -292,6 +296,7 @@
 	list_reagents = list(/datum/reagent/consumable/nutriment = 5)
 	bonus_reagents = list(/datum/reagent/consumable/nutriment = 1, /datum/reagent/consumable/nutriment/vitamin = 1)
 	tastes = list("butter" = 1, "biscuit" = 1)
+	foodtype = GRAIN | BREAKFAST
 
 /obj/item/reagent_containers/food/snacks/butterdog
 	name = "butterdog"

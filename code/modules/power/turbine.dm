@@ -56,13 +56,17 @@
 	resistance_flags = FIRE_PROOF
 	CanAtmosPass = ATMOS_PASS_DENSITY
 	circuit = /obj/item/circuitboard/machine/power_turbine
-	ui_x = 310
-	ui_y = 150
+
+
 	var/opened = 0
 	var/obj/machinery/power/compressor/compressor
 	var/turf/outturf
 	var/lastgen
 	var/productivity = 1
+	var/destroy_output = FALSE //Destroy the output gas instead of actually outputting it. Used on lavaland to prevent cooking the zlevel
+
+/obj/machinery/power/turbine/lavaland
+	destroy_output = TRUE
 
 /obj/machinery/power/turbine/Destroy()
 	if (compressor && compressor.turbine == src)
@@ -131,13 +135,11 @@
 	cut_overlays()
 
 	rpm = 0.9* rpm + 0.1 * rpmtarget
-	var/datum/gas_mixture/environment = inturf.return_air()
 
 	// It's a simplified version taking only 1/10 of the moles from the turf nearby. It should be later changed into a better version
+	// above todo 7 years and counting
 
-	var/transfer_moles = environment.total_moles()/10
-	var/datum/gas_mixture/removed = inturf.remove_air(transfer_moles)
-	gas_contained.merge(removed)
+	inturf.transfer_air_ratio(gas_contained, 0.1)
 
 // RPM function to include compression friction - be advised that too low/high of a compfriction value can make things screwy
 
@@ -186,7 +188,7 @@
 /obj/machinery/power/turbine/examine(mob/user)
 	. = ..()
 	if(in_range(user, src) || isobserver(user))
-		. += "<span class='notice'>The status display reads: Productivity at <b>[productivity*100]%</b>.<span>"
+		. += "<span class='notice'>The status display reads: Productivity at <b>[productivity*100]%</b>.</span>"
 
 /obj/machinery/power/turbine/locate_machinery()
 	if(compressor)
@@ -215,7 +217,7 @@
 
 	// Weird function but it works. Should be something else...
 
-	var/newrpm = ((compressor.gas_contained.temperature) * compressor.gas_contained.total_moles())/4
+	var/newrpm = ((compressor.gas_contained.return_temperature()) * compressor.gas_contained.total_moles())/4
 
 	newrpm = max(0, newrpm)
 
@@ -224,8 +226,10 @@
 
 	if(compressor.gas_contained.total_moles()>0)
 		var/oamount = min(compressor.gas_contained.total_moles(), (compressor.rpm+100)/35000*compressor.capacity)
-		var/datum/gas_mixture/removed = compressor.gas_contained.remove(oamount)
-		outturf.assume_air(removed)
+		if(destroy_output)
+			compressor.gas_contained.set_moles(compressor.gas_contained.get_moles() - oamount)
+		else
+			outturf.assume_air_moles(compressor.gas_contained, oamount)
 
 // If it works, put an overlay that it works!
 
@@ -250,12 +254,16 @@
 
 	default_deconstruction_crowbar(I)
 
-/obj/machinery/power/turbine/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/power/turbine/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/power/turbine/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "TurbineComputer", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "TurbineComputer")
 		ui.open()
+		ui.set_autoupdate(TRUE) // Turbine stats (power, RPM, temperature)
 
 /obj/machinery/power/turbine/ui_data(mob/user)
 	var/list/data = list()
@@ -266,7 +274,7 @@
 	data["online"] = compressor?.starter
 	data["power"] = DisplayPower(compressor?.turbine?.lastgen)
 	data["rpm"] = compressor?.rpm
-	data["temp"] = compressor?.gas_contained.temperature
+	data["temp"] = compressor?.gas_contained.return_temperature()
 	return data
 
 /obj/machinery/power/turbine/ui_act(action, params)
@@ -294,8 +302,8 @@
 	icon_screen = "turbinecomp"
 	icon_keyboard = "tech_key"
 	circuit = /obj/item/circuitboard/computer/turbine_computer
-	ui_x = 310
-	ui_y = 150
+
+
 	var/obj/machinery/power/compressor/compressor
 	var/id = 0
 
@@ -312,15 +320,16 @@
 			if(C.comp_id == id)
 				compressor = C
 				return
-	else
-		compressor = locate(/obj/machinery/power/compressor) in range(7, src)
+	// Couldn't find compressor, time to do search indiscriminately
+	compressor = locate(/obj/machinery/power/compressor) in range(7, src)
 
 /obj/machinery/computer/turbine_computer/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
 									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "TurbineComputer", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "TurbineComputer")
 		ui.open()
+		ui.set_autoupdate(TRUE) // Turbine stats (power, RPM, temperature)
 
 /obj/machinery/computer/turbine_computer/ui_data(mob/user)
 	var/list/data = list()
@@ -331,7 +340,7 @@
 	data["online"] = compressor?.starter
 	data["power"] = DisplayPower(compressor?.turbine?.lastgen)
 	data["rpm"] = compressor?.rpm
-	data["temp"] = compressor?.gas_contained.temperature
+	data["temp"] = compressor?.gas_contained.return_temperature()
 	return data
 
 /obj/machinery/computer/turbine_computer/ui_act(action, params)

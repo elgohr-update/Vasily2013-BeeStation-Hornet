@@ -93,7 +93,6 @@
 	name = "cat ears"
 	icon = 'icons/obj/clothing/hats.dmi'
 	icon_state = "kitty"
-	damage_multiplier = 2
 	bang_protect = -2
 
 /obj/item/organ/ears/cat/Insert(mob/living/carbon/human/H, special = 0, drop_if_replaced = TRUE)
@@ -151,10 +150,11 @@
 			owner.Jitter(30)
 			owner.Dizzy(30)
 			owner.Knockdown(200)
-			deaf = 30
-			to_chat(owner, "<span class='warning'>Your robotic ears are ringing, uselessly.</span>")
+			to_chat(owner, "<span class='warning'>Alert: Audio sensors malfunctioning</span>")
+			owner.apply_status_effect(STATUS_EFFECT_IPC_EMP)
 		if(2)
 			owner.Jitter(15)
 			owner.Dizzy(15)
 			owner.Knockdown(100)
-			to_chat(owner, "<span class='warning'>Your robotic ears buzz.</span>") 
+			to_chat(owner, "<span class='warning'>Alert: Audio sensors malfunctioning</span>")
+			owner.apply_status_effect(STATUS_EFFECT_IPC_EMP)

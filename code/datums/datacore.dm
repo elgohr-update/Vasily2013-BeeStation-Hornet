@@ -1,4 +1,3 @@
-
 /datum/datacore
 	var/medical[] = list()
 	var/medicalPrintCount = 0
@@ -33,48 +32,97 @@
 	var/crimeDetails = ""
 	var/author = ""
 	var/time = ""
+	var/fine = 0
+	var/paid = 0
 	var/dataId = 0
 
-/datum/datacore/proc/createCrimeEntry(cname = "", cdetails = "", author = "", time = "")
+/datum/datacore/proc/createCrimeEntry(cname = "", cdetails = "", author = "", time = "", fine = 0)
 	var/datum/data/crime/c = new /datum/data/crime
 	c.crimeName = cname
 	c.crimeDetails = cdetails
 	c.author = author
 	c.time = time
+	c.fine = fine
+	c.paid = 0
 	c.dataId = ++securityCrimeCounter
 	return c
 
-/datum/datacore/proc/addMinorCrime(id = "", datum/data/crime/crime)
+/datum/datacore/proc/addCitation(id = "", datum/data/crime/crime)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["mi_crim"]
+			var/list/crimes = R.fields["citation"]
 			crimes |= crime
 			return
 
-/datum/datacore/proc/removeMinorCrime(id, cDataId)
+/datum/datacore/proc/removeCitation(id, cDataId)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["mi_crim"]
+			var/list/crimes = R.fields["citation"]
 			for(var/datum/data/crime/crime in crimes)
 				if(crime.dataId == text2num(cDataId))
 					crimes -= crime
 					return
 
-/datum/datacore/proc/removeMajorCrime(id, cDataId)
+/datum/datacore/proc/payCitation(id, cDataId, amount)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["ma_crim"]
+			var/list/crimes = R.fields["citation"]
+			for(var/datum/data/crime/crime in crimes)
+				if(crime.dataId == text2num(cDataId))
+					crime.paid = crime.paid + amount
+					var/datum/bank_account/D = SSeconomy.get_dep_account(ACCOUNT_SEC)
+					D.adjust_money(amount)
+					return
+
+/**
+  * Adds crime to security record.
+  *
+  * Is used to add single crime to someone's security record.
+  * Arguments:
+  * * id - record id.
+  * * datum/data/crime/crime - premade array containing every variable, usually created by createCrimeEntry.
+  */
+/datum/datacore/proc/addCrime(id = "", datum/data/crime/crime)
+	for(var/datum/data/record/R in security)
+		if(R.fields["id"] == id)
+			var/list/crimes = R.fields["crim"]
+			crimes |= crime
+			return
+
+/**
+  * Deletes crime from security record.
+  *
+  * Is used to delete single crime to someone's security record.
+  * Arguments:
+  * * id - record id.
+  * * cDataId - id of already existing crime.
+  */
+/datum/datacore/proc/removeCrime(id, cDataId)
+	for(var/datum/data/record/R in security)
+		if(R.fields["id"] == id)
+			var/list/crimes = R.fields["crim"]
 			for(var/datum/data/crime/crime in crimes)
 				if(crime.dataId == text2num(cDataId))
 					crimes -= crime
 					return
 
-/datum/datacore/proc/addMajorCrime(id = "", datum/data/crime/crime)
+/**
+  * Adds details to a crime.
+  *
+  * Is used to add or replace details to already existing crime.
+  * Arguments:
+  * * id - record id.
+  * * cDataId - id of already existing crime.
+  * * details - data you want to add.
+  */
+/datum/datacore/proc/addCrimeDetails(id, cDataId, details)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["ma_crim"]
-			crimes |= crime
-			return
+			var/list/crimes = R.fields["crim"]
+			for(var/datum/data/crime/crime in crimes)
+				if(crime.dataId == text2num(cDataId))
+					crime.crimeDetails = details
+					return
 
 /datum/datacore/proc/manifest()
 	for(var/i in GLOB.new_player_list)
@@ -99,7 +147,7 @@
 		"Medical" = GLOB.medical_positions,
 		"Science" = GLOB.science_positions,
 		"Supply" = GLOB.supply_positions,
-		"Civilian" = GLOB.civilian_positions,
+		"Civilian" = GLOB.civilian_positions | GLOB.gimmick_positions,
 		"Silicon" = GLOB.nonhuman_positions
 	)
 	for(var/datum/data/record/t in GLOB.data_core.general)
@@ -116,7 +164,8 @@
 					"rank" = rank
 				))
 				has_department = TRUE
-				break
+				if(department != "Command") //List heads in both command and their own department.
+					break
 		if(!has_department)
 			if(!manifest_out["Misc"])
 				manifest_out["Misc"] = list()
@@ -124,7 +173,12 @@
 				"name" = name,
 				"rank" = rank
 			))
-	return manifest_out
+	//Sort the list by 'departments' primarily so command is on top.
+	var/list/sorted_out = list()
+	for(var/department in (departments += "Misc"))
+		if(!isnull(manifest_out[department]))
+			sorted_out[department] = manifest_out[department]
+	return sorted_out
 
 /datum/datacore/proc/get_manifest_html(monochrome = FALSE)
 	var/list/manifest = get_manifest()
@@ -191,7 +245,7 @@
 		G.fields["rank"]		= assignment
 		G.fields["age"]			= H.age
 		G.fields["species"]	= H.dna.species.name
-		G.fields["fingerprint"]	= md5(H.dna.uni_identity)
+		G.fields["fingerprint"]	= rustg_hash_string(RUSTG_HASH_MD5, H.dna.uni_identity)
 		G.fields["p_stat"]		= "Active"
 		G.fields["m_stat"]		= "Stable"
 		G.fields["sex"]			= H.gender
@@ -221,14 +275,14 @@
 		S.fields["id"]			= id
 		S.fields["name"]		= H.real_name
 		S.fields["criminal"]	= "None"
-		S.fields["mi_crim"]		= list()
-		S.fields["ma_crim"]		= list()
+		S.fields["citation"]	= list()
+		S.fields["crim"]		= list()
 		S.fields["notes"]		= "No notes."
 		security += S
 
 		//Locked Record
 		var/datum/data/record/L = new()
-		L.fields["id"]			= md5("[H.real_name][H.mind.assigned_role]")	//surely this should just be id, like the others?
+		L.fields["id"]			= rustg_hash_string(RUSTG_HASH_MD5, "[H.real_name][H.mind.assigned_role]")	//surely this should just be id, like the others?
 		L.fields["name"]		= H.real_name
 		L.fields["rank"] 		= H.mind.assigned_role
 		L.fields["age"]			= H.age

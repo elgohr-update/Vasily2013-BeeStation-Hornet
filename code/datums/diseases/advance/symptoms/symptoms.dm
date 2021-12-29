@@ -8,7 +8,7 @@
 	var/stealth = 0
 	var/resistance = 0
 	var/stage_speed = 0
-	var/transmittable = 0
+	var/transmission = 0
 	// The type level of the symptom. Higher is harder to generate.
 	var/level = -1
 	// The severity level of the symptom. Higher is more dangerous.
@@ -29,7 +29,9 @@
 	var/neutered = FALSE
 	var/list/thresholds
 	var/naturally_occuring = TRUE //if this symptom can appear from /datum/disease/advance/GenerateSymptoms()
-	var/dynamicseverity = FALSE //prevents severity from stacking
+	var/list/prefixes = list()
+	var/list/bodies = list()
+	var/list/suffixes = list()
 
 /datum/symptom/New()
 	var/list/S = SSdisease.list_symptoms
@@ -48,7 +50,7 @@
 
 //called when a disease first tries to infect someone.
 /datum/symptom/proc/severityset(datum/disease/advance/A)
-	dynamicseverity = TRUE
+	severity = initial(severity)
 
 // Called when the advance disease is going to be deleted or when the advance disease stops processing.
 /datum/symptom/proc/End(datum/disease/advance/A)
@@ -57,6 +59,8 @@
 	return TRUE
 
 /datum/symptom/proc/Activate(datum/disease/advance/A)
+	if(!A)
+		return FALSE //prevents a niche runtime where a disease procs on the same tick it is cured
 	if(neutered)
 		return FALSE
 	if(world.time < next_activation)

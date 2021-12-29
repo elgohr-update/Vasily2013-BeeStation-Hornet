@@ -74,6 +74,7 @@
 		addtimer(CALLBACK(src, .proc/perform_research, usr, currentName), 0)
 		currentName = ""
 		currentSection = PRE_TITLE
+		ui_update()
 		return FALSE
 	else
 		currentName += action
@@ -89,13 +90,17 @@
 			currentSection = SYLLABLE
 	else if(GLOB.devil_suffix.Find(action))
 		currentSection = SUFFIX
+	ui_update()
 	return currentSection != oldSection
 
-/obj/item/book/codex_gigas/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/item/book/codex_gigas/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/item/book/codex_gigas/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "CodexGigas", name, 450, 450, master_ui, state)
+		ui = new(user, src, "CodexGigas")
 		ui.open()
 
 /obj/item/book/codex_gigas/ui_data(mob/user)

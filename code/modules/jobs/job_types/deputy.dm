@@ -8,6 +8,7 @@
 	spawn_positions = 0
 	supervisors = "the head of security"
 	selection_color = "#ffeeee"
+	chat_color = "#ffeeee"
 	minimal_player_age = 7
 	exp_requirements = 180
 	exp_type = EXP_TYPE_CREW
@@ -21,6 +22,7 @@
 	mind_traits = list(TRAIT_LAW_ENFORCEMENT_METABOLISM)
 
 	display_order = JOB_DISPLAY_ORDER_DEPUTY  //see code/__DEFINES/jobs.dm
+	departments = DEPARTMENT_SECURITY
 
 /datum/outfit/job/deputy
 	name = "Deputy"
@@ -28,7 +30,7 @@
 
 	belt = /obj/item/storage/belt/security/deputy
 	ears = /obj/item/radio/headset/headset_sec
-	uniform = /obj/item/clothing/under/rank/security/mallcop/deputy
+	uniform = /obj/item/clothing/under/rank/security/officer/mallcop/deputy
 	accessory = /obj/item/clothing/accessory/armband/deputy
 	shoes = /obj/item/clothing/shoes/sneakers/black
 	glasses = /obj/item/clothing/glasses/hud/security/deputy
@@ -39,3 +41,9 @@
 	satchel = /obj/item/storage/backpack/satchel/sec
 	duffelbag = /obj/item/storage/backpack/duffelbag/sec
 	box = /obj/item/storage/box/survival
+
+/obj/item/card/id/pass/deputy
+	name = "deputy promotion card"
+	desc = "A small card, that when used on an ID, will grant basic security access, and the job title of 'Deputy.'"
+	assignment = "Deputy"
+	access = list(ACCESS_SEC_DOORS, ACCESS_MAINT_TUNNELS, ACCESS_COURT, ACCESS_BRIG, ACCESS_WEAPONS)
