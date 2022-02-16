@@ -44,7 +44,7 @@
 	item_state = "balloon-empty"
 
 
-/obj/item/toy/balloon/Initialize()
+/obj/item/toy/balloon/Initialize(mapload)
 	. = ..()
 	create_reagents(10)
 
@@ -244,8 +244,7 @@
 	w_class = WEIGHT_CLASS_SMALL
 	attack_verb = list("attacked", "struck", "hit")
 	var/hacked = FALSE
-	block_upgrade_walk = 1
-	block_power = -200
+	var/saber_color
 
 /obj/item/toy/sword/attack_self(mob/user)
 	active = !( active )
@@ -278,13 +277,13 @@
 			var/obj/item/dualsaber/toy/newSaber = new /obj/item/dualsaber/toy(user.loc)
 			if(hacked) // That's right, we'll only check the "original" "sword".
 				newSaber.hacked = TRUE
-				newSaber.item_color = "rainbow"
+				newSaber.saber_color = "rainbow"
 			qdel(W)
 			qdel(src)
 	else if(W.tool_behaviour == TOOL_MULTITOOL)
 		if(!hacked)
 			hacked = TRUE
-			item_color = "rainbow"
+			saber_color = "rainbow"
 			to_chat(user, "<span class='warning'>RNBW_ENGAGE</span>")
 
 			if(active)
@@ -309,9 +308,6 @@
 	attack_verb = list("pricked", "absorbed", "gored")
 	w_class = WEIGHT_CLASS_SMALL
 	resistance_flags = FLAMMABLE
-	block_upgrade_walk = 1
-	block_power = -200
-
 
 /obj/item/toy/windupToolbox
 	name = "windup toolbox"
@@ -370,8 +366,8 @@
 	throw_range = 5
 	twohand_force = 0
 	attack_verb = list("attacked", "struck", "hit")
-	block_upgrade_walk = 1
-	block_power = -100
+	block_upgrade_walk = 0
+	block_level = 0
 
 /obj/item/dualsaber/toy/hit_reaction(mob/living/carbon/human/owner, atom/movable/hitby, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK)
 	return 0
@@ -389,6 +385,7 @@
 	icon = 'icons/obj/items_and_weapons.dmi'
 	icon_state = "katana"
 	item_state = "katana"
+	worn_icon_state = "katana"
 	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'
 	righthand_file = 'icons/mob/inhands/weapons/swords_righthand.dmi'
 	flags_1 = CONDUCT_1
@@ -398,10 +395,7 @@
 	w_class = WEIGHT_CLASS_NORMAL
 	attack_verb = list("attacked", "slashed", "stabbed", "sliced")
 	hitsound = 'sound/weapons/bladeslice.ogg'
-	block_upgrade_walk = 1
-	block_level = 1
-	block_flags = BLOCKING_ACTIVE | BLOCKING_PROJECTILE
-	block_power = -500 //not to be used on anything more effective than nerf darts
+	block_flags = BLOCKING_ACTIVE | BLOCKING_PROJECTILE //if it some how gets block level, katanas block projectiles for the meme
 
 /*
  * Snap pops
@@ -432,7 +426,7 @@
 	if(!..())
 		pop_burst()
 
-/obj/item/toy/snappop/Initialize()
+/obj/item/toy/snappop/Initialize(mapload)
 	. = ..()
 	var/static/list/loc_connections = list(
 		COMSIG_ATOM_ENTERED = .proc/on_entered,
@@ -455,7 +449,7 @@
 /obj/effect/decal/cleanable/ash/snappop_phoenix
 	var/respawn_time = 300
 
-/obj/effect/decal/cleanable/ash/snappop_phoenix/Initialize()
+/obj/effect/decal/cleanable/ash/snappop_phoenix/Initialize(mapload)
 	. = ..()
 	addtimer(CALLBACK(src, .proc/respawn), respawn_time)
 
@@ -691,7 +685,7 @@
 	var/list/cards = list()
 	var/original_size = 52
 
-/obj/item/toy/cards/deck/Initialize()
+/obj/item/toy/cards/deck/Initialize(mapload)
 	. = ..()
 	populate_deck()
 
@@ -848,6 +842,9 @@
 	if(href_list["pick"])
 		if (cardUser.is_holding(src))
 			var/choice = href_list["pick"]
+			if(!(choice in src.currenthand))
+				log_href_exploit(usr)
+				return
 			var/obj/item/toy/cards/singlecard/C = new/obj/item/toy/cards/singlecard(cardUser.loc)
 			src.currenthand -= choice
 			C.parentdeck = src.parentdeck
@@ -1135,6 +1132,7 @@
 	desc = "A stylish steampunk watch made out of thousands of tiny cogwheels."
 	icon = 'icons/obj/clockwork_objects.dmi'
 	icon_state = "dread_ipad"
+	worn_icon_state = "dread_ipad"
 	slot_flags = ITEM_SLOT_BELT
 	w_class = WEIGHT_CLASS_SMALL
 	var/cooldown = 0
@@ -1217,7 +1215,7 @@
 	var/toysay = "What the fuck did you do?"
 	var/toysound = 'sound/machines/click.ogg'
 
-/obj/item/toy/figure/Initialize()
+/obj/item/toy/figure/Initialize(mapload)
 	. = ..()
 	desc = "A \"Space Life\" brand [src]."
 
@@ -1653,7 +1651,7 @@
 
 /obj/item/storage/pill_bottle/dice_cup/cyborg
 	desc = "The house always wins..."
-/obj/item/storage/pill_bottle/dice_cup/cyborg/Initialize()
+/obj/item/storage/pill_bottle/dice_cup/cyborg/Initialize(mapload)
 	. = ..()
 	new /obj/item/dice/d6(src)
 	new /obj/item/dice/d6(src)
@@ -1670,7 +1668,7 @@
 	new /obj/item/paper/yatzy(src)
 	new /obj/item/paper/yatzy(src)
 
-/obj/item/storage/pill_bottle/dice_cup/yatzy/Initialize()
+/obj/item/storage/pill_bottle/dice_cup/yatzy/Initialize(mapload)
 	. = ..()
 	for(var/dice in 1 to 5)
 		new /obj/item/dice/d6(src)

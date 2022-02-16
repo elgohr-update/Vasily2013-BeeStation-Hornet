@@ -51,7 +51,7 @@
 		charges--//... drain a charge
 		recharge_newshot()
 
-/obj/item/gun/magic/Initialize()
+/obj/item/gun/magic/Initialize(mapload)
 	. = ..()
 	charges = max_charges
 	chambered = new ammo_type(src)
@@ -91,5 +91,5 @@
 /obj/item/gun/magic/vv_edit_var(var_name, var_value)
 	. = ..()
 	switch (var_name)
-		if ("charges")
+		if(NAMEOF(src, charges))
 			recharge_newshot()

@@ -180,18 +180,6 @@ Turf and target are separate in case you want to teleport some distance from a t
 			line+=locate(px,py,M.z)
 	return line
 
-/// Returns whether or not a player is a guest using their ckey as an input
-/proc/IsGuestKey(key)
-	if (findtext(key, "Guest-", 1, 7) != 1) //was findtextEx
-		return FALSE
-
-	var/i, ch, len = length(key)
-
-	for (i = 7, i <= len, ++i) //we know the first 6 chars are Guest-
-		ch = text2ascii(key, i)
-		if (ch < 48 || ch > 57) //0-9
-			return FALSE
-	return TRUE
 
 //// Generalised helper proc for letting mobs rename themselves. Used to be clname() and ainame()
 /mob/proc/apply_pref_name(role, client/C)
@@ -243,28 +231,27 @@ Turf and target are separate in case you want to teleport some distance from a t
 /// Returns a list of unslaved cyborgs
 /proc/active_free_borgs()
 	. = list()
-	for(var/mob/living/silicon/robot/R in GLOB.alive_mob_list)
-		if(R.connected_ai || R.shell)
+	for(var/mob/living/silicon/robot/borg in GLOB.silicon_mobs)
+		if(borg.connected_ai || borg.shell)
 			continue
-		if(R.stat == DEAD)
+		if(borg.stat == DEAD)
 			continue
-		if(R.emagged || R.scrambledcodes)
+		if(borg.emagged || borg.scrambledcodes)
 			continue
-		. += R
+		. += borg
 
 /// Returns a list of AI's
-/proc/active_ais(check_mind=0)
+/proc/active_ais(check_mind=FALSE)
 	. = list()
-	for(var/mob/living/silicon/ai/A in GLOB.alive_mob_list)
-		if(A.stat == DEAD)
+	for(var/mob/living/silicon/ai/ai as anything in GLOB.ai_list)
+		if(ai.stat == DEAD)
 			continue
-		if(A.control_disabled)
+		if(ai.control_disabled)
 			continue
 		if(check_mind)
-			if(!A.mind)
+			if(!ai.mind)
 				continue
-		. += A
-	return .
+		. += ai
 
 /// Find an active ai with the least borgs. VERBOSE PROCNAME HUH!
 /proc/select_active_ai_with_fewest_borgs()
@@ -1294,7 +1281,7 @@ GLOBAL_DATUM_INIT(dview_mob, /mob/dview, new)
 	move_resist = INFINITY
 	var/ready_to_die = FALSE
 
-/mob/dview/Initialize() //Properly prevents this mob from gaining huds or joining any global lists
+/mob/dview/Initialize(mapload) //Properly prevents this mob from gaining huds or joining any global lists
 	return INITIALIZE_HINT_NORMAL
 
 /mob/dview/Destroy(force = FALSE)
