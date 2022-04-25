@@ -138,6 +138,7 @@
 	exp_light = 0
 	exp_flash = 0
 	exp_fire= 4
+	magic = FALSE
 
 /datum/mutation/human/void
 	name = "Void Magnet"
@@ -289,7 +290,7 @@
 		icon_state = icon_right
 
 /obj/item/melee/touch_attack/acidooze/afterattack(atom/target, mob/living/carbon/user, proximity)
-	if(!isoozeling(user))
+	if(!proximity || !isoozeling(user))
 		return
 	var/mob/living/carbon/human/H = user
 	if(!target || user.incapacitated())
@@ -297,7 +298,7 @@
 	if(H.blood_volume < 40)
 		to_chat(user, "<span class='warning'>You don't have enough blood to do that!</span>")
 		return FALSE
-	if(target.acid_act(75, 15))
+	if(target.acid_act(50, 15))
 		user.visible_message("<span class='warning'>[user] rubs globs of vile stuff all over [target].</span>")
 		H.blood_volume = max(H.blood_volume - 20, 0)
 		return ..()
